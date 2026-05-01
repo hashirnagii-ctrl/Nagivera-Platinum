@@ -7,7 +7,6 @@ st.set_page_config(page_title="Nagivera Platinum", page_icon="💎", layout="wid
 # --- Gemma 4 Model Mapping ---
 # Using the specific Gemma 4 IDs released in April 2026
 MODEL_MAP = {
-MODEL_MAP = {
     "NAGI v4.1 (Lite)": "gemma-4-e4b-it",      # Effective 4B (Edge-optimized)
     "NAGI v4.1 (Rapid)": "gemma-4-26b-a4b-it", # 26B Mixture-of-Experts
     "NAGI v4.1 (Ultra)": "gemma-4-31b-it"      # 31B Dense model
