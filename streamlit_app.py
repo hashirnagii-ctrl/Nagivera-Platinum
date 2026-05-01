@@ -11,7 +11,6 @@ MODEL_MAP = {
     "NAGI v4.1 (Rapid)": "gemma-4-26b-a4b-it", # 26B Mixture-of-Experts
     "NAGI v4.1 (Ultra)": "gemma-4-31b-it"      # 31B Dense model
 }
-}
 
 # --- Sidebar for Model Selection ---
 with st.sidebar:
