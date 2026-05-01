@@ -65,7 +65,7 @@ if prompt := st.chat_input("Input Command..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner(f"Nagivera is processing using {version_name}..."):
+       with st.spinner(f"Nagivera is processing using {selected_version}..."):
             answer = get_ai_response(prompt, selected_version)
             st.markdown(answer)
             st.session_state.messages.append({"role": "assistant", "content": answer})
