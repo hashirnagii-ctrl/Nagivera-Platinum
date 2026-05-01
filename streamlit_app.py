@@ -1,5 +1,8 @@
-import subprocess
-import sys
+import streamlit as st
+import google.generativeai as genai # (or whatever your genai import is)
+import psutil
+
+# ... rest of your Nagivera code ...
 
 def check_dependencies():
     """Nagivera Auto-Installer: Ensures a 10/10 user experience by handling setup."""
@@ -12,8 +15,6 @@ def check_dependencies():
             subprocess.check_call([sys.executable, "-m", "pip", "install", lib])
             print(f"Nagivera: {lib} installed successfully.")
 
-# Run the check before anything else
-check_dependencies()
 
 import psutil # Now safe to import
 import sqlite3
@@ -23,22 +24,20 @@ import os
 import time
 import random
 from google import genai
-from anthropic import Anthropic
-from openai import OpenAI
+
 
 # --- 1. NAGIVERA IDENTITY ---
 ST_TITLE = "Nagivera"
 ST_VERSION = "v9.2 Platinum"
 DEV_CREDIT = "Built by Hashir Nagi"
-SLOGAN = "The Million-Dollar Hybrid Intelligence"
+SLOGAN = "Hybrid artificial Intelligence"
 
 st.set_page_config(page_title=f"{ST_TITLE} {ST_VERSION}", page_icon="💎", layout="wide")
 
 # --- 2. 2026 INTELLIGENCE MAPPING ---
 MODEL_MAP = {
     "Nagi Reasoning (Gemini 3.1 Pro)": {"id": "gemini-3.1-pro-preview", "type": "google"},
-    "Nagi Coding (Claude 4.7 Opus)": {"id": "claude-4-7-opus", "type": "anthropic"},
-    "Nagi Turbo (DeepSeek v4)": {"id": "deepseek-chat", "type": "openai"},
+    "Nagi Turbo (DeepSeek v4)": {"id": "deepseek-chat", "type": "deep"},
     "Nagi Recovery (Gemini 3.1 Flash)": {"id": "gemini-3.1-flash-lite-preview", "type": "google"}
 }
 MODES = list(MODEL_MAP.keys())
