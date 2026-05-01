@@ -41,7 +41,7 @@ st.markdown("""
 
 # --- 3. Engine Configuration ---
 MODEL_MAP = {
-    "NAGI v4.1 (Lite)": "gemma-4-e4b-it",
+    "NAGI v4.1 (Lite)": "gemma-4-26b-a4b-it",  # Changed from e4b to the MoE cloud endpoint
     "NAGI v4.1 (Rapid)": "gemma-4-26b-a4b-it",
     "NAGI v4.1 (Ultra)": "gemma-4-31b-it"
 }
