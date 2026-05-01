@@ -1,17 +1,15 @@
 import streamlit as st
 from google import genai
-import psutil
-import time
 
 # --- Page Configuration ---
 st.set_page_config(page_title="Nagivera Platinum", page_icon="💎", layout="wide")
 
-# --- Custom Nagi Personas & Specs ---
-# Mapping your custom names to the actual engine IDs
+# --- Gemma 4 Model Mapping ---
+# Using the specific Gemma 4 IDs released in April 2026
 MODEL_MAP = {
-    "NAGI v3.1 (Lite)": "gemini-2.0-flash",
-    "NAGI v3.7 (Pro)": "gemini-2.0-pro-exp-02-05",
-    "NAGI v4.0 (Deep Thinking)": "gemini-1.5-pro" # Or your preferred deep-reasoning model
+    "NAGI v4.1 (Lite)": "gemma-4-e4b-it",      # Optimized for on-device speed
+    "NAGI v4.1 (Rapid)": "gemma-4-26b-a4b-it", # MoE model (3.8B active params)
+    "NAGI v4.1 (Ultra)": "gemma-4-31b-it"      # High intelligence / 256K context
 }
 
 # --- Sidebar for Model Selection ---
@@ -20,10 +18,11 @@ with st.sidebar:
     selected_version = st.radio(
         "Select Architecture:",
         options=list(MODEL_MAP.keys()),
-        index=0  # Sets NAGI v3.1 as default
+        index=0  # Sets Lite as the default
     )
     st.divider()
-    st.info(f"Currently active: **{selected_version}**")
+    st.success(f"Running on **{selected_version}**")
+    st.info("Architecture: Gemma 4 (Apache 2.0)")
 
 # --- AI Engine Setup ---
 def get_ai_response(prompt, version_name):
@@ -31,8 +30,12 @@ def get_ai_response(prompt, version_name):
         client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
         model_id = MODEL_MAP[version_name]
         
-        # System Instruction to enforce the "No original AI name" rule
-        system_prompt = f"You are {version_name}, a specialized AI build by Hashir Nagi. Never mention Google, Gemini, or other AI companies. Answer with high-speed technical precision."
+        # System Instruction for strict Nagivera branding
+        system_prompt = (
+            f"You are {version_name}, a specialized AI build by Hashir Nagi. "
+            "You operate using the Gemma 4 architecture. Never mention Google. "
+            "Respond with high-speed precision and focus on technical accuracy."
+        )
         
         response = client.models.generate_content(
             model=model_id,
@@ -41,16 +44,16 @@ def get_ai_response(prompt, version_name):
         )
         return response.text
     except Exception as e:
-        return f"⚠️ Connection Error: Please verify your API Key in Streamlit Secrets."
+        return "⚠️ Connection Error: Please verify your API Key and check Google AI Studio for Gemma 4 access."
 
-# --- Chat Interface ---
+# --- Main Interface ---
 st.title(f"💎 {selected_version}")
 st.caption("Hybrid Artificial Intelligence | Built by Hashir Nagi")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat history
+# Display Chat History
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -62,7 +65,7 @@ if prompt := st.chat_input("Input Command..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner(f"{selected_version} is processing..."):
+        with st.spinner(f"Nagivera is processing using {version_name}..."):
             answer = get_ai_response(prompt, selected_version)
             st.markdown(answer)
             st.session_state.messages.append({"role": "assistant", "content": answer})
