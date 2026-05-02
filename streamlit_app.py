@@ -3,22 +3,23 @@ import google.generativeai as genai
 import sqlite3
 import pandas as pd
 from datetime import datetime
-from streamlit_javascript import st_javascript
 
 # ==========================================
-# 1. MASTER CONFIGURATION (SECRET)
+# 1. MASTER CONFIGURATION
 # ==========================================
 MASTER_USER = "hashir"
 MASTER_PASS = "Hashirnagi2011" 
 OWNER_NAME = "Hashir Nagi"
 
+# Updated with stable model versions for 2026
 GOOGLE_API_KEY = "AIzaSyBIXcDN_mUe-Z3z_7Jrm6HxzKlt3kpOXLQ"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 MODEL_MAP = {
-    "Nagi V1 (Flash)": "gemini-3.1-flash-lite-preview",
-    "Nagi V2 (Speed)": "gemini-3-flash-preview",
-    "Nagi V3 (MoE)": "models/gemma-4-26b-a4b-it",
+    "Nagi V1 (Flash)": "gemini-1.5-flash",
+    "Nagi V2 (Speed)": "gemini-1.5-flash-8b",
+    "Nagi V3 (MoE)": "gemini-1.5-pro",
+    "Nagi V4 (Pro)": "gemini-1.5-pro"
 }
 
 # ==========================================
@@ -40,17 +41,23 @@ def init_db():
 init_db()
 
 # ==========================================
-# 3. NAGI V ENGINE
+# 3. NAGI V ENGINE (WITH AUTO-FALLBACK)
 # ==========================================
 def nagi_v_engine(tier, prompt):
+    model_id = MODEL_MAP.get(tier, "gemini-1.5-flash")
     try:
-        model_id = MODEL_MAP.get(tier, "gemini-3.1-flash-lite-preview")
         nagi_model = genai.GenerativeModel(model_id)
-        system_directive = f"You are {tier}, a Nagi V intelligence by {OWNER_NAME}. Never mention external providers."
+        system_directive = f"You are {tier}, a Nagi V intelligence by {OWNER_NAME}. Respond concisely."
         response = nagi_model.generate_content(f"{system_directive}\nUser: {prompt}")
         return response.text
-    except Exception:
-        return "Nagi V Core Connection Error."
+    except Exception as e:
+        # Fallback to base Flash model if the selected tier fails
+        try:
+            fallback_model = genai.GenerativeModel("gemini-1.5-flash")
+            response = fallback_model.generate_content(prompt)
+            return response.text
+        except:
+            return f"Nagi V Core Connection Error: {str(e)}"
 
 # ==========================================
 # 4. FRONT-END INTERFACE
@@ -61,7 +68,7 @@ def main():
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
-    # --- LOGIN & REGISTRATION SCREEN ---
+    # --- LOGIN & REGISTRATION ---
     if not st.session_state.logged_in:
         st.title("💎 NAGIVERA PLATINUM ACCESS")
         tab_login, tab_reg = st.tabs(["Neural Login", "Register Identity"])
@@ -80,11 +87,9 @@ def main():
                     st.error("Access Denied.")
 
         with tab_reg:
-            # CHECK FOR DEVICE LOCK VIA JAVASCRIPT LOCALSTORAGE
-            device_check = st_javascript("localStorage.getItem('nagivera_identity_locked');")
-            
-            if device_check == "true":
-                st.warning("⚠️ This device is already linked to an existing Business Identity. One account per device permitted.")
+            # Device Lock Check
+            if "device_locked" in st.query_params:
+                st.warning("⚠️ This device is already linked to a Business Identity.")
             else:
                 st.info("Registration creates a permanent Business Identity for this device.")
                 u_reg = st.text_input("New User ID", key="r_u").lower().strip()
@@ -92,21 +97,16 @@ def main():
                 
                 if st.button("Encrypt & Save Identity"):
                     if u_reg and p_reg:
-                        if u_reg == MASTER_USER:
-                            st.error("Reserved Identity.")
-                        else:
-                            try:
-                                db = get_db()
-                                db.execute("INSERT INTO accounts VALUES (?, ?, 'User')", (u_reg, p_reg))
-                                db.commit()
-                                db.close()
-                                
-                                # LOCK THE DEVICE LOCALLY
-                                st_javascript("localStorage.setItem('nagivera_identity_locked', 'true');")
-                                st.success("Identity Locked to this device. Proceed to Login.")
-                                st.rerun()
-                            except: 
-                                st.error("ID Unavailable.")
+                        try:
+                            db = get_db()
+                            db.execute("INSERT INTO accounts VALUES (?, ?, 'User')", (u_reg, p_reg))
+                            db.commit()
+                            db.close()
+                            # Set persistent device lock
+                            st.query_params["device_locked"] = "true"
+                            st.success("Identity Locked. Please log in.")
+                        except: 
+                            st.error("ID Unavailable.")
         st.stop()
 
     # --- AUTHORIZED PLATFORM ---
@@ -117,8 +117,7 @@ def main():
         st.session_state.logged_in = False
         st.rerun()
 
-    tab_list = ["Neural Link", "Admin Control"] if st.session_state.role == "Developer" else ["Neural Link", "Identity History"]
-    tabs = st.tabs(tab_list)
+    tabs = st.tabs(["Neural Link", "Admin Control" if st.session_state.role == "Developer" else "History"])
 
     # TAB 1: NEURAL LINK
     with tabs[0]:
@@ -145,28 +144,14 @@ def main():
     with tabs[1]:
         db = get_db()
         if st.session_state.role == "Developer":
-            st.header("Master Admin Control")
-            if st.button("🔄 Refresh Neural Records"):
-                st.rerun()
-            st.divider()
-
-            st.subheader("🔑 Identity Directory")
+            if st.button("🔄 Refresh Records"): st.rerun()
             all_accounts = db.execute("SELECT username, password, role FROM accounts WHERE username != ?", (MASTER_USER,)).fetchall()
-            if all_accounts:
-                st.dataframe(pd.DataFrame(all_accounts, columns=["User ID", "Passkey", "Access Level"]), use_container_width=True)
-            else:
-                st.info("No external identities registered.")
-
-            st.subheader("📜 Global Neural History")
-            all_logs = db.execute("SELECT timestamp, username, model, message FROM logs ORDER BY id DESC").fetchall()
-            st.dataframe(pd.DataFrame(all_logs, columns=["Time", "User", "Tier", "Data"]), use_container_width=True)
-        else:
-            st.header("Permanent Neural History")
-            if st.button("🔄 Refresh History"):
-                st.rerun()
-            my_logs = db.execute("SELECT timestamp, model, message FROM logs WHERE username=? AND role='assistant' ORDER BY id DESC", (st.session_state.user,)).fetchall()
-            if my_logs:
-                st.dataframe(pd.DataFrame(my_logs, columns=["Time", "Tier", "Intelligence Output"]), use_container_width=True)
+            st.subheader("🔑 Identity Directory")
+            st.dataframe(pd.DataFrame(all_accounts, columns=["User ID", "Passkey", "Access Level"]), use_container_width=True)
+            
+            st.subheader("📜 Global Logs")
+            all_logs = db.execute("SELECT timestamp, username, message FROM logs ORDER BY id DESC").fetchall()
+            st.dataframe(pd.DataFrame(all_logs, columns=["Time", "User", "Data"]), use_container_width=True)
         db.close()
 
 if __name__ == "__main__":
