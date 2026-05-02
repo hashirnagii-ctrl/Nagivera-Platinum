@@ -4,6 +4,7 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import base64
+import os
 
 # ==========================================
 # 1. SYSTEM CONFIGURATION
@@ -15,7 +16,6 @@ MASTER_PASS = "Hashirnagi2011"
 API_SECRET = "AIzaSyDxtxyI0s2L7gpyTyz2blQCOmEBv0Is18o"
 genai.configure(api_key=API_SECRET)
 
-# THE 2026 NAGI 2.5 STACK
 NAGI_VERSIONS = {
     "Nagi 2.5 (Lite)": "gemini-2.5-flash-lite", 
     "Nagi 2.5 (Flash)": "gemini-2.5-flash",     
@@ -23,16 +23,14 @@ NAGI_VERSIONS = {
 }
 
 # ==========================================
-# 2. IMAGE HANDLER (Fixed to navigera.png)
+# 2. IMAGE HANDLER (navigera.png)
 # ==========================================
 def get_image_base64(image_path):
-    try:
+    if os.path.exists(image_path):
         with open(image_path, "rb") as img_file:
             return base64.b64encode(img_file.read()).decode()
-    except:
-        return None
+    return None
 
-# Mapping to your specific filename
 nagi_img_b64 = get_image_base64("navigera.png")
 
 # ==========================================
@@ -67,26 +65,37 @@ def nagi_v_engine(nagi_label, prompt):
 def main():
     st.set_page_config(page_title="Nagi V", page_icon="💎", layout="wide")
 
-    # --- CUSTOM STYLING (YouTube Style & Backlight Effect) ---
+    # --- CUSTOM STYLING (Bold Text + Image Background) ---
+    bg_style = f"background-image: url('data:image/png;base64,{nagi_img_b64}');" if nagi_img_b64 else "background-color: #000;"
+    
     st.markdown(f"""
         <style>
         .stApp {{ background-color: #0f0f0f; }} 
         [data-testid="stSidebar"] {{ background-color: #1a1a1a; }}
         
-        /* The Black Hole Banner with Backlight Glow */
         .banner-container {{
             width: 100%;
             height: 250px;
-            background-image: url('data:image/png;base64,{nagi_img_b64 if nagi_img_b64 else ""}');
-            background-size: contain;
-            background-repeat: no-repeat;
+            {bg_style}
+            background-size: cover;
             background-position: center;
-            background-color: black;
             border-radius: 15px;
             margin-bottom: 30px;
-            border: 1px solid #333;
-            /* Backlight Effect */
-            box-shadow: 0px 0px 20px 2px rgba(255, 255, 255, 0.05);
+            border: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0px 0px 30px rgba(255, 255, 255, 0.1);
+        }}
+        
+        .banner-text {{
+            color: white;
+            font-size: 80px;
+            font-weight: 900;
+            letter-spacing: 10px;
+            text-transform: uppercase;
+            text-shadow: 0px 0px 20px rgba(0,0,0,1), 0px 0px 10px rgba(255,255,255,0.5);
+            font-family: 'Arial Black', sans-serif;
         }}
         </style>
     """, unsafe_allow_html=True)
@@ -94,7 +103,6 @@ def main():
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
-    # --- LOGIN ---
     if not st.session_state.logged_in:
         st.title("NAGI V: ACCESS")
         u = st.text_input("Nagi ID").lower().strip()
@@ -109,8 +117,8 @@ def main():
             else: st.error("Access Denied.")
         st.stop()
 
-    # --- TOP BANNER (Displays navigera.png) ---
-    st.markdown('<div class="banner-container"></div>', unsafe_allow_html=True)
+    # --- TOP BANNER ---
+    st.markdown(f'<div class="banner-container"><div class="banner-text">NAGIVERA</div></div>', unsafe_allow_html=True)
 
     # --- SIDEBAR CONTROLS ---
     with st.sidebar:
