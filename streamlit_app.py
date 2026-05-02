@@ -3,32 +3,30 @@ import google.generativeai as genai
 import sqlite3
 import pandas as pd
 from datetime import datetime
-import re
 
 # ==========================================
-# 1. SYSTEM ARCHITECTURE & MASTER BRANDING
+# 1. SYSTEM CONFIGURATION & MASTER KEY
 # ==========================================
 OWNER_NAME = "Hashir Nagi"
 MASTER_USER = "hashir"
 MASTER_PASS = "Hashirnagi2011" 
 
-# Secure Backend Configuration (Hidden from User)
+# Secure Backend Access
 API_SECRET = "AIzaSyBolwEZUN8GO_n1dfKw-B_Q0VFQipfxsmc"
 genai.configure(api_key=API_SECRET)
 
-# THE TRIPLE-TIER NAGI SYSTEM
-# Mapping internal IDs to your custom Nagi Versions
-NAGI_CORES = {
-    "Nagi v1.0 (Light)": "gemini-1.5-flash-8b", # Near-instant speed
-    "Nagi v2.0 (Pro)": "gemini-1.5-flash",      # High-performance balance
-    "Nagi v3.0 (Ultra)": "gemini-1.5-pro"       # Maximum expert reasoning
+# THE TRIPLE-TIER NAGI CORES (Optimized for 2026 Speed)
+NAGI_VERSIONS = {
+    "Nagi 1.5 (Light)": "gemini-1.5-flash-8b",
+    "Nagi 2.0 (Pro)": "gemini-1.5-flash",
+    "Nagi 2.5 (Ultra)": "gemini-1.5-pro" # Mapped to the most powerful reasoning engine
 }
 
 # ==========================================
-# 2. DATA PERSISTENCE LAYER
+# 2. DATABASE PROTOCOL
 # ==========================================
 def get_db():
-    conn = sqlite3.connect('nagi_v_master.db', check_same_thread=False)
+    conn = sqlite3.connect('nagi_v_final.db', check_same_thread=False)
     conn.execute('CREATE TABLE IF NOT EXISTS accounts (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
     conn.execute('''CREATE TABLE IF NOT EXISTS logs 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, role TEXT, model TEXT, message TEXT, timestamp DATETIME)''')
@@ -37,131 +35,127 @@ def get_db():
     return conn
 
 # ==========================================
-# 3. SANITIZED NEURAL ENGINE
+# 3. SANITIZED NEURAL ENGINE (NO ERRORS)
 # ==========================================
 def nagi_v_engine(nagi_label, prompt):
     try:
-        model_id = NAGI_CORES.get(nagi_label)
+        model_id = NAGI_VERSIONS.get(nagi_label)
         nagi_core = genai.GenerativeModel(model_name=model_id)
         
-        # Directive to ensure the AI knows its identity
-        directive = f"System: {nagi_label} | Founder: {OWNER_NAME}. You are a custom Nagi Intelligence."
+        # Identity reinforcement
+        directive = f"System: {nagi_label} | Founder: {OWNER_NAME}. You are an elite Nagi Intelligence core."
         response = nagi_core.generate_content(f"{directive}\n\nUser: {prompt}")
         return response.text
-    
     except Exception as e:
-        # BRAND SANITIZATION: Removes any mention of Google/Gemini from raw error messages
-        raw_error = str(e)
-        sanitized_error = raw_error.replace("Gemini", "Nagi").replace("Google", "Nagi System")
-        return f"NAGI CORE ERROR: {sanitized_error}"
+        # Erases all mention of third-party names from errors
+        err = str(e).replace("Gemini", "Nagi Core").replace("Google", "System")
+        return f"NAGI SYSTEM ALERT: {err}"
 
 # ==========================================
-# 4. NAGI V OPERATING SYSTEM UI
+# 4. INTERFACE ARCHITECTURE
 # ==========================================
 def main():
-    st.set_page_config(page_title="Nagi V Platinum", page_icon="💎", layout="wide")
+    st.set_page_config(page_title="Nagi V", page_icon="💎", layout="wide")
 
-    # Hide Streamlit branding for a cleaner "Nagi" feel
+    # --- CUSTOM STYLING (YouTube Banner Feel) ---
     st.markdown("""
         <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
+        .stApp { background-color: #0e1117; }
+        [data-testid="stSidebar"] { background-color: #161b22; }
+        .banner-box {
+            width: 100%;
+            height: 200px;
+            background-image: url('https://images.unsplash.com/photo-1635776062127-d379bfcba9f8?q=80&w=2532&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-end;
+            padding: 20px;
+        }
+        .banner-text { color: white; font-size: 45px; font-weight: bold; text-shadow: 2px 2px 4px #000; }
         </style>
-        """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
-    # --- SECURE LOGIN PORTAL ---
+    # --- LOGIN PORTAL ---
     if not st.session_state.logged_in:
-        st.title("💎 NAGI V: SYSTEM ACCESS")
-        
-        tab_login, tab_reg = st.tabs(["Secure Login", "Register Identity"])
-        
-        with tab_login:
-            u_log = st.text_input("Nagi ID", key="l_u").lower().strip()
-            p_log = st.text_input("Nagi Passkey", type="password", key="l_p")
-            
-            if st.button("Initialize Neural Link"):
-                db = get_db()
-                res = db.execute("SELECT role FROM accounts WHERE username=? AND password=?", (u_log, p_log)).fetchone()
-                db.close()
-                if res:
-                    st.session_state.logged_in, st.session_state.user, st.session_state.role = True, u_log, res[0]
-                    st.rerun()
-                else:
-                    st.error("Authentication Failed: Identity not recognized.")
-
-        with tab_reg:
-            u_reg = st.text_input("New Nagi ID", key="r_u").lower().strip()
-            p_reg = st.text_input("New Nagi Passkey", type="password", key="r_p")
-            if st.button("Encrypt Identity"):
-                if u_reg and p_reg:
-                    db = get_db()
-                    try:
-                        db.execute("INSERT INTO accounts VALUES (?, ?, 'User')", (u_reg, p_reg))
-                        db.commit()
-                        st.success(f"Identity '{u_reg}' secured.")
-                    except: st.error("ID Cluster Occupied.")
-                    db.close()
+        st.title("NAGI V: ACCESS PORTAL")
+        u = st.text_input("Nagi ID").lower().strip()
+        p = st.text_input("Passkey", type="password")
+        if st.button("Initialize"):
+            db = get_db()
+            res = db.execute("SELECT role FROM accounts WHERE username=? AND password=?", (u, p)).fetchone()
+            db.close()
+            if res:
+                st.session_state.logged_in, st.session_state.user, st.session_state.role = True, u, res[0]
+                st.rerun()
+            else: st.error("Identity unknown.")
         st.stop()
 
-    # --- MAIN OPERATING ENVIRONMENT ---
+    # --- TOP BANNER (YouTube Channel Style) ---
+    st.markdown(f'<div class="banner-box"><div class="banner-text">NAGI V SYSTEM</div></div>', unsafe_allow_html=True)
+
+    # --- SIDEBAR (THE SLIDE CONTROL) ---
     with st.sidebar:
-        st.header("Nagi V Control")
-        st.caption(f"Operator: {st.session_state.user.upper()}")
+        st.title("System Controls")
         st.divider()
         
-        # Pure Nagi Branding in the selection
-        active_version = st.selectbox("Select Nagi Intelligence Version", list(NAGI_CORES.keys()))
+        # Model Selection
+        active_version = st.selectbox("Intelligence Version", list(NAGI_VERSIONS.keys()))
         
-        if st.button("Terminate Session"):
+        # Action Buttons
+        if st.button("🔄 Refresh Neural Grid", use_container_width=True):
+            st.cache_data.clear()
+            st.success("Grid Synced.")
+            
+        if st.button("🔴 Terminate Session", use_container_width=True):
             st.session_state.logged_in = False
             st.rerun()
+            
+        st.divider()
+        st.caption(f"Operator: {st.session_state.user.upper()}")
 
-    # Admin visibility logic
+    # --- ADMIN / CHAT TABS ---
     is_dev = st.session_state.role == "Developer"
-    tabs = st.tabs(["Nagi Neural Link", "Nagi Admin Control"]) if is_dev else [st.container()]
+    tabs = st.tabs(["Neural Link", "Admin Control"]) if is_dev else [st.container()]
 
     # --- CHAT INTERFACE ---
     with (tabs[0] if is_dev else tabs[0]):
         db = get_db()
-        logs = db.execute("SELECT role, message FROM logs WHERE username=? ORDER BY id DESC LIMIT 15", (st.session_state.user,)).fetchall()[::-1]
-        
+        logs = db.execute("SELECT role, message FROM logs WHERE username=? ORDER BY id DESC LIMIT 20", (st.session_state.user,)).fetchall()[::-1]
         for r, m in logs:
             with st.chat_message(r): st.write(m)
 
-        if user_prompt := st.chat_input(f"Command {active_version}..."):
-            with st.chat_message("user"): st.write(user_prompt)
+        if prompt := st.chat_input(f"Interacting via {active_version}..."):
+            with st.chat_message("user"): st.write(prompt)
             db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'user', ?, ?, ?)", 
-                       (st.session_state.user, active_version, user_prompt, datetime.now()))
+                       (st.session_state.user, active_version, prompt, datetime.now()))
             db.commit()
             
-            # Execute engine and display response
-            resp = nagi_v_engine(active_version, user_prompt)
-            
-            with st.chat_message("assistant"): st.write(resp)
+            # Response
+            ans = nagi_v_engine(active_version, prompt)
+            with st.chat_message("assistant"): st.write(ans)
             db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'assistant', ?, ?, ?)", 
-                       (st.session_state.user, active_version, resp, datetime.now()))
+                       (st.session_state.user, active_version, ans, datetime.now()))
             db.commit()
             db.close()
             st.rerun()
 
-    # --- ADMIN CONTROL CENTER ---
+    # --- ADMIN PANEL ---
     if is_dev:
         with tabs[1]:
-            st.subheader("🔑 Managed Identity Directory")
+            st.subheader("Global Identity Directory")
             db = get_db()
             st.dataframe(pd.read_sql_query("SELECT username, role FROM accounts", db), use_container_width=True)
-
-            st.subheader("📜 Global Nagi Logs")
+            st.subheader("System Traffic Logs")
             st.dataframe(pd.read_sql_query("SELECT timestamp, username, model, message FROM logs ORDER BY id DESC", db), use_container_width=True)
-            
-            if st.button("🗑️ Wipe All Logs"):
+            if st.button("Purge Global Traffic"):
                 db.execute("DELETE FROM logs")
                 db.commit()
-                st.warning("All neural logs have been cleared.")
                 st.rerun()
             db.close()
 
