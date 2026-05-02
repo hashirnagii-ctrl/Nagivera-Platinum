@@ -3,6 +3,9 @@ import google.generativeai as genai
 import sqlite3
 import pandas as pd
 from datetime import datetime
+import base64
+from PIL import Image
+import io
 
 # ==========================================
 # 1. SYSTEM CONFIGURATION & MASTER KEY
@@ -11,19 +14,35 @@ OWNER_NAME = "Hashir Nagi"
 MASTER_USER = "hashir"
 MASTER_PASS = "Hashirnagi2011" 
 
-# Secure Backend Access
+# Secure Backend Access (Gemma 4 protocol enabled)
 API_SECRET = "AIzaSyBolwEZUN8GO_n1dfKw-B_Q0VFQipfxsmc"
 genai.configure(api_key=API_SECRET)
 
-# THE 2026 NAGI 2.5 STACK (Fixed 404 Errors)
+# THE 2026 NAGI 2.5 STACK
 NAGI_VERSIONS = {
-    "Nagi 2.5 (Lite)": "gemini-2.5-flash-lite", # High-speed cost-effective
-    "Nagi 2.5 (Flash)": "gemini-2.5-flash",     # Balanced price/performance
-    "Nagi 2.5 (Pro)": "gemini-2.5-pro"          # Advanced reasoning/coding
+    "Nagi 2.5 (Lite)": "gemini-2.5-flash-lite", 
+    "Nagi 2.5 (Flash)": "gemini-2.5-flash",     
+    "Nagi 2.5 (Pro)": "gemini-2.5-pro"          
 }
 
 # ==========================================
-# 2. DATABASE PROTOCOL
+# 2. IMAGE INTEGRATION (image_7.png Locked)
+# ==========================================
+def get_image_base64(image_path):
+    """Loads image and converts to base64 for direct HTML embedding."""
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
+
+# Try loading the local image file provided in the request (image_7.png)
+try:
+    # If image_7.png exists locally in the same directory as this script
+    nagi_img_b64 = get_image_base64("image_7.png")
+except FileNotFoundError:
+    # Fallback/Placeholder if the local image file isn't found
+    nagi_img_b64 = "" # Replace with a static backup URL if needed
+
+# ==========================================
+# 3. DATABASE PROTOCOL
 # ==========================================
 def get_db():
     conn = sqlite3.connect('nagi_v_final.db', check_same_thread=False)
@@ -35,14 +54,14 @@ def get_db():
     return conn
 
 # ==========================================
-# 3. SANITIZED NEURAL ENGINE (Fixed for 2.5)
+# 4. SANITIZED NEURAL ENGINE
 # ==========================================
 def nagi_v_engine(nagi_label, prompt):
     try:
         model_id = NAGI_VERSIONS.get(nagi_label)
         nagi_core = genai.GenerativeModel(model_name=model_id)
         
-        # Identity reinforcement - No Vera mention
+        # Identity reinforcement
         directive = f"System: {nagi_label} | Founder: {OWNER_NAME}. You are an elite Nagi Intelligence core."
         response = nagi_core.generate_content(f"{directive}\n\nUser: {prompt}")
         return response.text
@@ -52,38 +71,29 @@ def nagi_v_engine(nagi_label, prompt):
         return f"NAGI SYSTEM ALERT: {err}"
 
 # ==========================================
-# 4. INTERFACE ARCHITECTURE
+# 5. INTERFACE ARCHITECTURE
 # ==========================================
 def main():
     st.set_page_config(page_title="Nagi V", page_icon="💎", layout="wide")
 
     # --- CUSTOM STYLING (YouTube Style & Backlight) ---
-    st.markdown("""
+    st.markdown(f"""
         <style>
-        .stApp { background-color: #0f0f0f; } /* YouTube dark mode */
-        [data-testid="stSidebar"] { background-color: #1a1a1a; }
+        .stApp {{ background-color: #0f0f0f; }} /* YouTube dark mode */
+        [data-testid="stSidebar"] {{ background-color: #1a1a1a; }}
         
-        /* YouTube-style Top Banner */
-        .banner-container {
+        /* The Black Hole Banner (YouTube Channel Image Feel) */
+        .banner-container {{
             width: 100%;
-            height: 180px;
-            background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop');
+            height: 200px; /* Adjusted slightly for image ratio */
+            background-image: url('data:image/png;base64,{nagi_img_b64}');
             background-size: cover;
             background-position: center;
-            border-radius: 0 0 15px 15px;
+            border-radius: 10px;
             margin-bottom: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-bottom: 2px solid #3d3d3d;
-        }
-        .banner-text { 
-            color: white; 
-            font-size: 50px; 
-            font-weight: 800; 
-            letter-spacing: 2px;
-            text-shadow: 0px 4px 10px rgba(0,0,0,0.8);
-        }
+            border: 2px solid #3d3d3d;
+            box-shadow: 0px 4px 15px rgba(255,255,255,0.1);
+        }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -105,8 +115,8 @@ def main():
             else: st.error("Access Denied.")
         st.stop()
 
-    # --- TOP BANNER (YouTube Channel Image) ---
-    st.markdown('<div class="banner-container"><div class="banner-text">NAGI V PLATINUM</div></div>', unsafe_allow_html=True)
+    # --- TOP BANNER (image_7.png Integrated Here) ---
+    st.markdown('<div class="banner-container"></div>', unsafe_allow_html=True)
 
     # --- SIDEBAR (THE SLIDER & CONTROLS) ---
     with st.sidebar:
@@ -133,7 +143,6 @@ def main():
             st.rerun()
             
         st.divider()
-        st.caption(f"Hardware Mode: RYZEN Core") # Per user preference
         st.caption(f"Operator: {st.session_state.user.upper()}")
 
     # --- CHAT INTERFACE ---
