@@ -36,15 +36,24 @@ def get_image_base64(image_path):
 nagi_img_b64 = get_image_base64("navigera.png")
 
 # ==========================================
-# 3. DATABASE PROTOCOL
+# 3. DATABASE PROTOCOL (With Auto-Repair)
 # ==========================================
 def get_db():
     conn = sqlite3.connect('nagi_v_final.db', check_same_thread=False)
+    # Primary Table Creation
     conn.execute('''CREATE TABLE IF NOT EXISTS accounts 
-                 (username TEXT PRIMARY KEY, password TEXT, role TEXT, msg_count INTEGER DEFAULT 0)''')
+                 (username TEXT PRIMARY KEY, password TEXT, role TEXT)''')
+    
+    # DATABASE REPAIR LOGIC: Checks if msg_count exists, adds it if not.
+    try:
+        conn.execute("ALTER TABLE accounts ADD COLUMN msg_count INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+        
     conn.execute('''CREATE TABLE IF NOT EXISTS logs 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, role TEXT, model TEXT, message TEXT, timestamp DATETIME)''')
-    conn.execute("INSERT OR IGNORE INTO accounts (username, password, role) VALUES (?, ?, 'Developer')", (MASTER_USER, MASTER_PASS))
+    conn.execute("INSERT OR IGNORE INTO accounts (username, password, role, msg_count) VALUES (?, ?, 'Developer', 0)", 
+                 (MASTER_USER, MASTER_PASS))
     conn.commit()
     return conn
 
@@ -74,7 +83,6 @@ def nagi_v_engine(nagi_label, prompt):
 def main():
     st.set_page_config(page_title="Nagi V", page_icon="💎", layout="wide")
 
-    # INITIALIZE SESSION STATES (Prevents the AttributeError from your image)
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
     if 'total_msgs' not in st.session_state:
@@ -105,7 +113,7 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    # --- LOGIN LOGIC ---
+    # --- LOGIN ---
     if not st.session_state.logged_in:
         st.title("NAGI V: ACCESS")
         u = st.text_input("Nagi ID").lower().strip()
@@ -118,7 +126,7 @@ def main():
                 st.session_state.logged_in = True
                 st.session_state.user = u
                 st.session_state.role = res[0]
-                st.session_state.total_msgs = res[1] # Set stats here
+                st.session_state.total_msgs = res[1] if res[1] is not None else 0
                 st.rerun()
             else: st.error("Access Denied.")
         st.stop()
@@ -130,7 +138,6 @@ def main():
     with st.sidebar:
         st.markdown(f"### 🛠 {st.session_state.user.upper()} CONTROL")
         
-        # PERSISTENT STATISTICS (Fixed Safety Check)
         msgs = st.session_state.get('total_msgs', 0)
         st.markdown(f"""
         <div class="stat-card">
@@ -143,7 +150,7 @@ def main():
         active_version = st.select_slider("Intelligence Level", options=list(NAGI_VERSIONS.keys()))
         
         st.divider()
-        st.markdown("### 🧬 PERSONALIZATION")
+        st.markdown("### 🧬 NAGI PERSONALIZATION")
         if st.button("🚲 Cycle Maintenance AI", use_container_width=True):
             st.toast("Drivetrain repair guides loaded.")
         if st.button("💻 RYZEN Optimization", use_container_width=True):
@@ -157,11 +164,10 @@ def main():
             st.session_state.logged_in = False
             st.rerun()
 
-    # --- MAIN NAVIGATION ---
+    # --- MAIN TABS ---
     is_dev = st.session_state.role == "Developer"
-    tabs = ["Neural Link", "Nagi Business", "Nagi Vision (AI Media)"]
+    tabs = ["Neural Link", "Nagi Business", "Nagi Vision"]
     if is_dev: tabs.append("Admin Control")
-    
     main_tabs = st.tabs(tabs)
 
     # --- TAB 1: NEURAL LINK (CHAT) ---
@@ -188,25 +194,32 @@ def main():
             db.close()
             st.rerun()
 
-    # --- TAB 2: BUSINESS ---
+    # --- TAB 2: BUSINESS ACCOUNT PAGE ---
     with main_tabs[1]:
         st.header("💼 Nagi Business Solutions")
-        st.write("**Organization Name:** Nagivera v4.3")
-        st.write("**Primary Hardware:** AMD Ryzen Architecture")
-        st.write("**Region:** Rawalpindi / Global")
+        st.info("Centralized business management for your Nagi Intelligence deployment.")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Active Subscriptions", "1 Tier (Master)")
+            st.write("**Organization:** Nagivera v4.3")
+        with col2:
+            st.metric("API Uptime", "99.9% (Stable)")
+            st.write("**Founder:** Hashir Nagi")
+        
+        st.divider()
+        st.subheader("🖥 System Specifications")
+        st.write("Hardware configuration detected: **AMD Ryzen Series Architecture**")
+        st.write("Current Focus: **Mechanical Maintenance & OS Customization**")
 
-    # --- TAB 3: NAGI VISION (CONCEPT) ---
+    # --- TAB 3: NAGI VISION ---
     with main_tabs[2]:
         st.header("🎨 Nagi Vision Forge")
-        st.info("Generative Video and Image suites are being calibrated for your Nagivera ecosystem.")
-        st.subheader("Upcoming Engines:")
-        st.write("* **Nagi Lens:** Nano Banana 2 (Image Generation)")
-        st.write("* **Nagi Motion:** Veo (Video Generation)")
-        st.write("* **Nagi Sonic:** Lyria 3 (Audio/Music Generation)")
+        st.info("Generative Video and Image suites are being calibrated.")
 
     # --- TAB 4: ADMIN ---
     if is_dev:
         with main_tabs[3]:
+            st.subheader("Global Identity Directory")
             db = get_db()
             st.dataframe(pd.read_sql_query("SELECT username, role, msg_count FROM accounts", db), use_container_width=True)
             db.close()
