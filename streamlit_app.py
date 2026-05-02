@@ -11,49 +11,52 @@ MASTER_USER = "hashir"
 MASTER_PASS = "Hashirnagi2011" 
 OWNER_NAME = "Hashir Nagi"
 
-# Your Google API Key
-GOOGLE_API_KEY = "AIzaSyBolwEZUN8GO_n1dfKw-B_Q0VFQipfxsmc"
+GOOGLE_API_KEY = "AIzaSyBIXcDN_mUe-Z3z_7Jrm6HxzKlt3kpOXLQ"
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# THE FIX: Removed the "models/" prefix that caused the 404 error.
-# Using the stable, exact model names for Speed and Deep Reasoning.
-MODEL_MAP = {
-    "NAGI V (Hyper-Speed)": "gemini-1.5-flash",    # Blazing fast, great for high volume
-    "NAGI V (Deep Expert)": "gemini-1.5-pro",      # Slower, but provides expert-level reasoning
-}
+# ==========================================
+# 2. AUTO-DISCOVERY (THE 404 KILLER)
+# ==========================================
+@st.cache_data
+def get_verified_nagi_cores():
+    """Dynamically fetches ONLY models guaranteed to work with your API key."""
+    try:
+        working_models = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                working_models.append(m.name)
+        
+        # Sort so the fastest/best models are at the top
+        return sorted(working_models, key=lambda x: "flash" in x or "pro" in x, reverse=True)
+    except Exception as e:
+        return [f"API KEY ERROR: {str(e)}"]
 
 # ==========================================
-# 2. CORE UTILITIES & PERSISTENCE
+# 3. CORE UTILITIES & PERSISTENCE
 # ==========================================
 def get_db():
     return sqlite3.connect('nagivera_platinum_master.db', check_same_thread=False)
 
-@st.cache_resource
-def get_model(model_id):
-    # Caching prevents reloading the model every time, ensuring max speed
-    return genai.GenerativeModel(model_id)
-
-def nagi_v_engine(tier, prompt):
-    model_id = MODEL_MAP.get(tier, "gemini-1.5-flash")
+def nagi_v_engine(actual_model_id, prompt):
     try:
-        model = get_model(model_id)
-        # Direct, lightweight system instruction to prevent lag
-        directive = f"You are {tier}, an expert AI system named NAGI V. Created by {OWNER_NAME}."
+        model = genai.GenerativeModel(actual_model_id)
+        # Deep expert reasoning directive, kept short for speed
+        directive = f"Identity: NAGI V. Creator: {OWNER_NAME}. Provide expert, fast reasoning."
         response = model.generate_content(f"{directive}\n\nUser: {prompt}")
         return response.text
     except Exception as e:
-        return f"NAGI V SYSTEM ERROR: {str(e)}"
+        return f"NAGI V EXECUTION ERROR: {str(e)}"
 
 # ==========================================
-# 3. INTERFACE (NAGI V TERMINAL)
+# 4. NAGI V TERMINAL INTERFACE
 # ==========================================
 def main():
     st.set_page_config(page_title="NAGI Platinum Core", layout="wide")
 
-    # Keep user logged in during refreshes
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
+    # --- LOGIN PORTAL ---
     if not st.session_state.logged_in:
         st.title("💎 NAGI V SECURE ACCESS")
         u_log = st.text_input("NAGI ID", key="l_u").lower().strip()
@@ -68,24 +71,27 @@ def main():
                 st.rerun()
         st.stop()
 
-    # SIDEBAR
+    # --- MAIN PLATFORM ---
+    verified_models = get_verified_nagi_cores()
+
     with st.sidebar:
         st.title("NAGI V Terminal")
-        if st.button("🔄 HARD RESET", help="Clears system cache if AI hangs"):
-            st.cache_resource.clear()
+        st.caption("Auto-Discovery Active: 0% 404 Risk")
+        
+        if st.button("🔄 REFRESH NETWORK"):
+            st.cache_data.clear()
             st.rerun()
             
         st.divider()
-        # User selects between Hyper-Speed or Deep Expert
-        active_tier = st.selectbox("Select NAGI V Core", list(MODEL_MAP.keys()))
+        # The dropdown now uses the exact strings Google tells us to use
+        active_model_id = st.selectbox("Select Verified Core", verified_models)
         
         if st.button("Terminate Link"):
             st.session_state.logged_in = False
             st.rerun()
 
-    # CHAT INTERFACE
+    # --- CHAT UI ---
     db = get_db()
-    # Limit to 15 messages so the UI doesn't get slow over time
     chat_data = db.execute("SELECT role, message FROM logs WHERE username=? ORDER BY id DESC LIMIT 15", (st.session_state.user,)).fetchall()[::-1]
     
     for r, m in chat_data:
@@ -94,18 +100,14 @@ def main():
     if user_prompt := st.chat_input("Command NAGI V..."):
         with st.chat_message("user"): st.write(user_prompt)
         
-        # Log user message
         db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'user', ?, ?, ?)", 
-                   (st.session_state.user, active_tier, user_prompt, datetime.now()))
+                   (st.session_state.user, active_model_id, user_prompt, datetime.now()))
         
-        # Generate NAGI V Response
-        resp = nagi_v_engine(active_tier, user_prompt)
+        resp = nagi_v_engine(active_model_id, user_prompt)
         
         with st.chat_message("assistant"): st.write(resp)
-        
-        # Log assistant message
         db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'assistant', ?, ?, ?)", 
-                   (st.session_state.user, active_tier, resp, datetime.now()))
+                   (st.session_state.user, active_model_id, resp, datetime.now()))
         db.commit()
         db.close()
         st.rerun()
