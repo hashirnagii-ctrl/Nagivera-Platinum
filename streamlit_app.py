@@ -15,11 +15,11 @@ MASTER_PASS = "Hashirnagi2011"
 API_SECRET = "AIzaSyBolwEZUN8GO_n1dfKw-B_Q0VFQipfxsmc"
 genai.configure(api_key=API_SECRET)
 
-# THE TRIPLE-TIER NAGI CORES (Optimized for 2026 Speed)
+# THE 2026 NAGI 2.5 STACK (Fixed 404 Errors)
 NAGI_VERSIONS = {
-    "Nagi 1.5 (Light)": "gemini-1.5-flash-8b",
-    "Nagi 2.0 (Pro)": "gemini-1.5-flash",
-    "Nagi 2.5 (Ultra)": "gemini-1.5-pro" # Mapped to the most powerful reasoning engine
+    "Nagi 2.5 (Lite)": "gemini-2.5-flash-lite", # High-speed cost-effective
+    "Nagi 2.5 (Flash)": "gemini-2.5-flash",     # Balanced price/performance
+    "Nagi 2.5 (Pro)": "gemini-2.5-pro"          # Advanced reasoning/coding
 }
 
 # ==========================================
@@ -35,14 +35,14 @@ def get_db():
     return conn
 
 # ==========================================
-# 3. SANITIZED NEURAL ENGINE (NO ERRORS)
+# 3. SANITIZED NEURAL ENGINE (Fixed for 2.5)
 # ==========================================
 def nagi_v_engine(nagi_label, prompt):
     try:
         model_id = NAGI_VERSIONS.get(nagi_label)
         nagi_core = genai.GenerativeModel(model_name=model_id)
         
-        # Identity reinforcement
+        # Identity reinforcement - No Vera mention
         directive = f"System: {nagi_label} | Founder: {OWNER_NAME}. You are an elite Nagi Intelligence core."
         response = nagi_core.generate_content(f"{directive}\n\nUser: {prompt}")
         return response.text
@@ -57,33 +57,42 @@ def nagi_v_engine(nagi_label, prompt):
 def main():
     st.set_page_config(page_title="Nagi V", page_icon="💎", layout="wide")
 
-    # --- CUSTOM STYLING (YouTube Banner Feel) ---
+    # --- CUSTOM STYLING (YouTube Style & Backlight) ---
     st.markdown("""
         <style>
-        .stApp { background-color: #0e1117; }
-        [data-testid="stSidebar"] { background-color: #161b22; }
-        .banner-box {
+        .stApp { background-color: #0f0f0f; } /* YouTube dark mode */
+        [data-testid="stSidebar"] { background-color: #1a1a1a; }
+        
+        /* YouTube-style Top Banner */
+        .banner-container {
             width: 100%;
-            height: 200px;
-            background-image: url('https://images.unsplash.com/photo-1635776062127-d379bfcba9f8?q=80&w=2532&auto=format&fit=crop');
+            height: 180px;
+            background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            border-radius: 0 0 15px 15px;
+            margin-bottom: 30px;
             display: flex;
-            align-items: flex-end;
-            padding: 20px;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 2px solid #3d3d3d;
         }
-        .banner-text { color: white; font-size: 45px; font-weight: bold; text-shadow: 2px 2px 4px #000; }
+        .banner-text { 
+            color: white; 
+            font-size: 50px; 
+            font-weight: 800; 
+            letter-spacing: 2px;
+            text-shadow: 0px 4px 10px rgba(0,0,0,0.8);
+        }
         </style>
     """, unsafe_allow_html=True)
 
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
-    # --- LOGIN PORTAL ---
+    # --- LOGIN ---
     if not st.session_state.logged_in:
-        st.title("NAGI V: ACCESS PORTAL")
+        st.title("NAGI V: ACCESS")
         u = st.text_input("Nagi ID").lower().strip()
         p = st.text_input("Passkey", type="password")
         if st.button("Initialize"):
@@ -93,71 +102,63 @@ def main():
             if res:
                 st.session_state.logged_in, st.session_state.user, st.session_state.role = True, u, res[0]
                 st.rerun()
-            else: st.error("Identity unknown.")
+            else: st.error("Access Denied.")
         st.stop()
 
-    # --- TOP BANNER (YouTube Channel Style) ---
-    st.markdown(f'<div class="banner-box"><div class="banner-text">NAGI V SYSTEM</div></div>', unsafe_allow_html=True)
+    # --- TOP BANNER (YouTube Channel Image) ---
+    st.markdown('<div class="banner-container"><div class="banner-text">NAGI V PLATINUM</div></div>', unsafe_allow_html=True)
 
-    # --- SIDEBAR (THE SLIDE CONTROL) ---
+    # --- SIDEBAR (THE SLIDER & CONTROLS) ---
     with st.sidebar:
-        st.title("System Controls")
+        st.markdown("### 🛠 SYSTEM CONTROLS")
         st.divider()
         
-        # Model Selection
-        active_version = st.selectbox("Intelligence Version", list(NAGI_VERSIONS.keys()))
+        # 1. THREE VERSIONS ON THE SLIDER
+        active_version = st.select_slider(
+            "Select Intelligence Level",
+            options=list(NAGI_VERSIONS.keys())
+        )
         
-        # Action Buttons
-        if st.button("🔄 Refresh Neural Grid", use_container_width=True):
+        st.divider()
+        
+        # 2. RESEARCH BUTTON
+        if st.button("🔍 System Research", use_container_width=True):
+            st.info("Scanning neural pathways for optimal performance...")
             st.cache_data.clear()
-            st.success("Grid Synced.")
+            st.success("Research Complete: Optimization Applied.")
             
-        if st.button("🔴 Terminate Session", use_container_width=True):
+        # 3. TERMINATE BUTTON
+        if st.button("🛑 Terminate Session", use_container_width=True):
             st.session_state.logged_in = False
             st.rerun()
             
         st.divider()
+        st.caption(f"Hardware Mode: RYZEN Core") # Per user preference
         st.caption(f"Operator: {st.session_state.user.upper()}")
 
-    # --- ADMIN / CHAT TABS ---
-    is_dev = st.session_state.role == "Developer"
-    tabs = st.tabs(["Neural Link", "Admin Control"]) if is_dev else [st.container()]
-
     # --- CHAT INTERFACE ---
-    with (tabs[0] if is_dev else tabs[0]):
-        db = get_db()
-        logs = db.execute("SELECT role, message FROM logs WHERE username=? ORDER BY id DESC LIMIT 20", (st.session_state.user,)).fetchall()[::-1]
-        for r, m in logs:
-            with st.chat_message(r): st.write(m)
+    is_dev = st.session_state.role == "Developer"
+    
+    db = get_db()
+    logs = db.execute("SELECT role, message FROM logs WHERE username=? ORDER BY id DESC LIMIT 15", (st.session_state.user,)).fetchall()[::-1]
+    
+    for r, m in logs:
+        with st.chat_message(r): st.write(m)
 
-        if prompt := st.chat_input(f"Interacting via {active_version}..."):
-            with st.chat_message("user"): st.write(prompt)
-            db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'user', ?, ?, ?)", 
-                       (st.session_state.user, active_version, prompt, datetime.now()))
-            db.commit()
-            
-            # Response
-            ans = nagi_v_engine(active_version, prompt)
-            with st.chat_message("assistant"): st.write(ans)
-            db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'assistant', ?, ?, ?)", 
-                       (st.session_state.user, active_version, ans, datetime.now()))
-            db.commit()
-            db.close()
-            st.rerun()
-
-    # --- ADMIN PANEL ---
-    if is_dev:
-        with tabs[1]:
-            st.subheader("Global Identity Directory")
-            db = get_db()
-            st.dataframe(pd.read_sql_query("SELECT username, role FROM accounts", db), use_container_width=True)
-            st.subheader("System Traffic Logs")
-            st.dataframe(pd.read_sql_query("SELECT timestamp, username, model, message FROM logs ORDER BY id DESC", db), use_container_width=True)
-            if st.button("Purge Global Traffic"):
-                db.execute("DELETE FROM logs")
-                db.commit()
-                st.rerun()
-            db.close()
+    if prompt := st.chat_input(f"Communicate with {active_version}..."):
+        with st.chat_message("user"): st.write(prompt)
+        db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'user', ?, ?, ?)", 
+                   (st.session_state.user, active_version, prompt, datetime.now()))
+        db.commit()
+        
+        # Neural Generation
+        ans = nagi_v_engine(active_version, prompt)
+        with st.chat_message("assistant"): st.write(ans)
+        db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'assistant', ?, ?, ?)", 
+                   (st.session_state.user, active_version, ans, datetime.now()))
+        db.commit()
+        db.close()
+        st.rerun()
 
 if __name__ == "__main__":
     main()
