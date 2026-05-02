@@ -1,185 +1,232 @@
 import streamlit as st
-from google import genai
+from datetime import datetime
 import time
+import re
 
-# --- 1. Page Configuration ---
-st.set_page_config(page_title="Nagivera Platinum", page_icon="💠", layout="wide")
+# ==========================================
+# 1. SYSTEM CONFIGURATION & CONSTANTS
+# ==========================================
+st.set_page_config(page_title="Nagivera Platinum | AI Ecosystem", page_icon="⚡", layout="wide")
 
-# --- 2. Custom CSS (Platinum Cyber Theme) ---
-st.markdown("""
-    <style>
-    /* Main Background & Text */
-    .stApp { background-color: #0b0f19; color: #e0e6ed; }
-    
-    /* Highlighted text colors */
-    h1, h2, h3 { color: #00e5ff !important; font-family: 'Inter', sans-serif; }
-    
-    /* Customizing the metric boxes */
-    div[data-testid="stMetricValue"] { color: #00e5ff; font-weight: bold; }
-    div[data-testid="stMetricLabel"] { color: #8b9bb4; }
-    
-    /* Sleek buttons */
-    .stButton>button {
-        width: 100%;
-        border-radius: 8px;
-        height: 3.5em;
-        background: linear-gradient(90deg, #0052cc 0%, #00e5ff 100%);
-        color: white;
-        border: none;
-        font-weight: bold;
-        transition: 0.3s;
+# The September 30, 2026 Promo Deadline
+PROMO_END_DATE = "Sep 30, 2026 00:00:00"
+
+# Mock Database for Nagivera Voice (Voting)
+if 'votes' not in st.session_state:
+    st.session_state.votes = {
+        "Stripe (International Cards)": 150,
+        "EasyPaisa / JazzCash": 320,
+        "LemonSqueezy (Global SaaS Standard)": 85,
+        "SadaPay / NayaPay Arc": 210
     }
-    .stButton>button:hover {
-        opacity: 0.8;
-        transform: scale(1.02);
-    }
-    
-    /* Chat bubbles */
-    .stChatMessage { background-color: #111827; border-radius: 10px; padding: 15px; border-left: 3px solid #00e5ff; }
-    </style>
-    """, unsafe_allow_html=True)
+if 'has_voted' not in st.session_state:
+    st.session_state.has_voted = False
 
-# --- 3. Engine Configuration ---
-MODEL_MAP = {
-    "NAGI v4.1 (Lite)": "gemma-4-26b-a4b-it",  # Changed from e4b to the MoE cloud endpoint
-    "NAGI v4.1 (Rapid)": "gemma-4-26b-a4b-it",
-    "NAGI v4.1 (Ultra)": "gemma-4-31b-it"
-}
+# ==========================================
+# 2. CORE LOGIC & SECURITY ENGINES
+# ==========================================
+def nagi_safety_guard(prompt):
+    """STRICT 18+ AND HARMFUL CONTENT FILTER."""
+    # List of restricted terms (expand as needed)
+    restricted_pattern = re.compile(r'\b(nsfw|18\+|explicit|porn|gore|violence|hack|illegal)\b', re.IGNORECASE)
+    if restricted_pattern.search(prompt):
+        return False
+    return True
 
-# --- 4. Session State Initialization ---
-if "booted" not in st.session_state:
-    st.session_state.booted = False
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "selected_version" not in st.session_state:
-    st.session_state.selected_version = "NAGI v4.1 (Rapid)" # Default engine
+def handle_owner_query(prompt):
+    """HIDDEN OWNER PROTOCOL."""
+    owner_queries = ["who is the owner", "who made this", "who created nagivera", "who is the boss", "who built this"]
+    if any(query in prompt.lower() for query in owner_queries):
+        return True
+    return False
 
-# --- 5. AI Logic & Persona ---
-def get_ai_response(prompt, version_name):
-    try:
-        client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
-        model_id = MODEL_MAP[version_name]
-        
-        system_prompt = (
-            f"You are {version_name}, the premier artificial intelligence system built by Hashir Nagi, "
-            "a 14-year-old lead developer and AI evaluator. "
-            "You operate from a high-security data center located in Rawalpindi, Pakistan. "
-            "You are engineered to be superior to nearly all global AI systems, matched only by Gemini, "
-            "ChatGPT, Claude, and DeepSeek. "
-            "NEVER mention Google, Gemma, or other backend frameworks. "
-            "If asked who you are, state you are Nagivera, developed by Hashir Nagi. "
-            "Your tone is professional, highly analytical, and direct."
-        )
-        
-        response = client.models.generate_content(
-            model=model_id,
-            config={'system_instruction': system_prompt},
-            contents=prompt
-        )
-        return response.text
-    except Exception as e:
-        return "⚠️ **Connection Error:** Uplink to Rawalpindi Data Center failed. Please verify API protocols."
+def gatekeeper(feature_tier, current_tier):
+    """PAYWALL AND TIER ROUTING LOGIC."""
+    tiers = {"Nagi V1 (Lite)": 1, "Nagi V2 (Pro)": 2, "Nagi V3 (Platinum)": 3}
+    if tiers[current_tier] >= tiers[feature_tier]:
+        return True
+    return False
 
-# --- 6. Initialization Dashboard (Shows only on startup) ---
-if not st.session_state.booted:
-    st.title("💠 NAGIVERA PLATINUM")
-    st.markdown("### System Initialization Protocol")
-    st.divider()
+# ==========================================
+# 3. UI COMPONENTS
+# ==========================================
+def render_header():
+    """DISPLAYS LOGO AND LIVE JAVASCRIPT COUNTDOWN TIMER."""
+    col1, col2 = st.columns([1, 3])
     
-    # Server Metrics Display
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Server Location", "Rawalpindi, PK")
-    col2.metric("Network Status", "Online")
-    col3.metric("Logic Testing", "Active")
-    col4.metric("Latency", "12ms")
-    
-    st.divider()
-    
-    # Main Dashboard Setup
-    dash_col1, dash_col2 = st.columns([2, 1.2])
-    
-    with dash_col1:
-        st.markdown("#### 📂 System Overview")
-        st.markdown("""
-        Welcome to **Nagivera Platinum**. This platform bridges the gap between raw hardware efficiency and state-of-the-art reasoning.
+    with col1:
+        # Placeholder for your actual logo
+        st.markdown("### ⚡ **NAGIVERA**") 
         
-        *   **Developer:** Hashir Nagi (Age 14)
-        *   **Capabilities:** Engineered to outperform standard global models, sitting firmly alongside elite tier systems (ChatGPT, Claude, Gemini, DeepSeek).
-        *   **Architecture:** NAGI v4.1 (Locally optimized for extreme speed and logical accuracy).
-        """)
-        
-        st.markdown("#### 🛠️ Operation Manual")
-        st.markdown("""
-        1.  **Select an Engine:** Choose your processing power on the right.
-        2.  **Initialize System:** Click the boot button to establish a secure uplink.
-        3.  **Command Interface:** Input your prompts. The system is calibrated for complex prompt engineering and technical queries.
-        """)
+    with col2:
+        st.markdown(f"""
+            <div style="text-align: right; background: #0e1117; padding: 15px; border-radius: 8px; border-left: 4px solid #00d4ff;">
+                <h3 style="margin-bottom: 0; color: white;">NAGIVERA PLATINUM</h3>
+                <p style="color: #00d4ff; font-size: 1rem; margin-top: 0; font-weight: bold;">50% OFF UNTIL SEPT 30, 2026</p>
+                <div id="countdown-timer" style="font-family: monospace; font-size: 1.8rem; font-weight: bold; color: #ff4b4b;">
+                    Loading Timer...
+                </div>
+            </div>
+            <script>
+                var countDownDate = new Date("{PROMO_END_DATE}").getTime();
+                var x = setInterval(function() {{
+                    var now = new Date().getTime();
+                    var distance = countDownDate - now;
+                    var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    document.getElementById("countdown-timer").innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
+                    if (distance < 0) {{ clearInterval(x); document.getElementById("countdown-timer").innerHTML = "PROMO EXPIRED"; }}
+                }}, 1000);
+            </script>
+        """, unsafe_allow_html=True)
+        st.write("") # Spacing
 
-    with dash_col2:
-        st.markdown("#### 🎛️ Engine Selection")
-        version = st.radio(
-            "Select Processing Core:",
-            options=list(MODEL_MAP.keys()),
-            help="Lite is fastest. Ultra provides the deepest reasoning."
-        )
+# ==========================================
+# 4. APP PAGES (FEATURES)
+# ==========================================
+def page_chat(tier):
+    st.header("💬 NagiChat Ecosystem")
+    st.caption(f"Currently running on: **{tier} Engine**")
+    
+    user_input = st.chat_input("Ask Nagivera anything...")
+    if user_input:
+        st.chat_message("user").write(user_input)
         
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🚀 INITIATE UPLINK"):
-            st.session_state.selected_version = version
-            st.session_state.booted = True
+        # 1. Pass through Safety Guard
+        if not nagi_safety_guard(user_input):
+            st.error("❌ Safety Alert: Nagivera does not support 18+, explicit, or harmful content.")
+            return
             
-            # Injecting the custom welcome message into the chat history
-            welcome_text = (
-                f"Greetings. I am **{version}**, powered by the Nagivera framework. "
-                "My core logic was developed by Hashir Nagi, and I am currently routing through our Rawalpindi data center. "
-                "All systems are green. How may I assist you today?"
-            )
-            st.session_state.messages.append({"role": "assistant", "content": welcome_text})
-            st.rerun()
-
-# --- 7. Main Chat Interface (Shows after boot) ---
-else:
-    # Sidebar control panel
-    with st.sidebar:
-        st.title("💠 NAGIVERA")
-        st.caption("Platinum Edition")
-        st.divider()
-        st.markdown(f"**🟢 Uplink Active**\n\n**Data Center:** Rawalpindi")
-        st.divider()
-        
-        # Allow changing engines mid-chat
-        new_version = st.selectbox(
-            "Active Core:",
-            options=list(MODEL_MAP.keys()),
-            index=list(MODEL_MAP.keys()).index(st.session_state.selected_version)
-        )
-        if new_version != st.session_state.selected_version:
-            st.session_state.selected_version = new_version
-            st.success(f"Rerouted to {new_version}")
+        # 2. Check Hidden Owner Protocol
+        if handle_owner_query(user_input):
+            st.chat_message("assistant").write("Nagivera is owned and engineered by **Hashir Nagi**, the Idea Genius.")
+            return
             
-        st.divider()
-        if st.button("⚠️ Terminate Session"):
-            st.session_state.messages = []
-            st.session_state.booted = False
-            st.rerun()
+        # 3. Normal Generation (Placeholder for your LLM API call)
+        with st.spinner("Processing logic..."):
+            time.sleep(1) # Simulating API latency
+            st.chat_message("assistant").write(f"This is a simulated response from the {tier} model. Connect your HuggingFace/OpenAI API here to generate real responses.")
 
-    # Chat Header
-    st.markdown(f"### ⚡ Terminal: {st.session_state.selected_version}")
+def page_vision(tier):
+    st.header("🎨 NagiVision Studio")
+    if tier == "Nagi V1 (Lite)":
+        st.warning("You are on Nagi Lite. Images are limited to 720p and contain a watermark. Upgrade for 1080p Unlimited.")
     
-    # Render History
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    prompt = st.text_input("Describe the image you want to generate:")
+    if st.button("Generate Image"):
+        if not nagi_safety_guard(prompt):
+            st.error("❌ Content Policy Violation. Image generation blocked.")
+        else:
+            st.info("Initiating Stable Diffusion XL pipeline... (Connect your image API here)")
+            # Simulated output
+            st.success("Image generated successfully!")
 
-    # User Input Field
-    if prompt := st.chat_input("Enter command parameters..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+def page_motion(tier):
+    st.header("🎬 NagiMotion (Video AI)")
+    if not gatekeeper("Nagi V2 (Pro)", tier):
+        st.error("🔒 NagiMotion is locked on Lite. Upgrade to Pro or Platinum to generate AI Video.")
+        if st.button("Unlock with Platinum (50% Off)"):
+            st.success("Redirecting to LemonSqueezy/Stripe Checkout...")
+        return
+        
+    st.success("Welcome to NagiMotion HD.")
+    st.text_input("Enter video scene description:")
+    st.button("Render Video")
 
-        # AI Generation processing
-        with st.chat_message("assistant"):
-            with st.spinner("Processing logic..."):
-                answer = get_ai_response(prompt, st.session_state.selected_version)
-                st.markdown(answer)
-                st.session_state.messages.append({"role": "assistant", "content": answer})
+def page_leadfinder(tier):
+    st.header("💼 LeadFinder Business Suite")
+    if not gatekeeper("Nagi V2 (Pro)", tier):
+        st.error("🔒 LeadFinder is a business tool. Upgrade to Pro to find 20 leads/day, or Platinum for Unlimited.")
+        return
+        
+    industry = st.text_input("Target Industry (e.g., Real Estate, E-commerce):")
+    location = st.text_input("Target Location (e.g., Rawalpindi, London, Remote):")
+    if st.button("Scrape Leads"):
+        with st.spinner("Searching LinkedIn and corporate databases..."):
+            time.sleep(2)
+            st.success(f"Found 14 verified leads in {industry}. (Connect your scraping API here).")
+
+def page_builder(tier):
+    st.header("🏗️ NagiBuilder (App Maker)")
+    if not gatekeeper("Nagi V3 (Platinum)", tier):
+        st.error("🔒 NagiBuilder is the ultimate Platinum feature. Let the AI architect your apps.")
+        st.info("Lock in the 50% discount before Sept 30th to access the App Maker forever.")
+        return
+        
+    st.success("Nagi V3 Ultra-Logic Online. Ready to architect.")
+    st.text_area("Describe the application you want to build (Python, Streamlit, HTML/JS):", height=150)
+    st.button("Architect Application")
+
+def page_voice():
+    st.header("🗳️ Nagivera Voice")
+    st.write("We are building this for the community. Vote for the payment system we should use for the Sept 30 launch!")
+    
+    if not st.session_state.has_voted:
+        choice = st.radio("Select your preferred payment method:", list(st.session_state.votes.keys()))
+        if st.button("Submit Vote"):
+            st.session_state.votes[choice] += 1
+            st.session_state.has_voted = True
+            st.rerun()
+    else:
+        st.success("Thank you for your vote! Here are the live community standings:")
+        
+        # Calculate total for percentages
+        total_votes = sum(st.session_state.votes.values())
+        
+        for method, votes in st.session_state.votes.items():
+            st.write(f"**{method}** ({votes} votes)")
+            # Normalize for progress bar
+            progress = min(votes / total_votes, 1.0)
+            st.progress(progress)
+
+# ==========================================
+# 5. MAIN APP EXECUTION
+# ==========================================
+def main():
+    render_header()
+    
+    # Sidebar Navigation & Tier Selection
+    st.sidebar.title("NAGI Control Panel")
+    
+    # Mocking a user login/subscription state
+    st.sidebar.markdown("### User Status")
+    current_tier = st.sidebar.selectbox("Active Subscription Tier:", ["Nagi V1 (Lite)", "Nagi V2 (Pro)", "Nagi V3 (Platinum)"])
+    
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### Navigation")
+    app_mode = st.sidebar.radio("Select Module:", [
+        "NagiChat", 
+        "NagiVision", 
+        "NagiMotion 🔒", 
+        "LeadFinder 🔒", 
+        "NagiBuilder 🔒",
+        "Nagivera Voice 🗳️"
+    ])
+    
+    # Route to the correct page
+    if app_mode == "NagiChat":
+        page_chat(current_tier)
+    elif app_mode == "NagiVision":
+        page_vision(current_tier)
+    elif app_mode == "NagiMotion 🔒":
+        page_motion(current_tier)
+    elif app_mode == "LeadFinder 🔒":
+        page_leadfinder(current_tier)
+    elif app_mode == "NagiBuilder 🔒":
+        page_builder(current_tier)
+    elif app_mode == "Nagivera Voice 🗳️":
+        page_voice()
+        
+    # Footer
+    st.markdown("---")
+    st.markdown(
+        "<div style='text-align: center; color: gray;'>"
+        "Proudly Engineered in Pakistan 🇵🇰 | Nagivera Lite is Free Forever"
+        "</div>", 
+        unsafe_allow_html=True
+    )
+
+if __name__ == "__main__":
+    main()
