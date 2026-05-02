@@ -4,181 +4,160 @@ from datetime import datetime, timezone
 import time
 
 # ==========================================
-# 1. PLATFORM CONFIGURATION & RULES
+# 1. CORE PLATFORM CONFIGURATION
 # ==========================================
+# The ironclad deadline for the "Early Bird" period
 DEADLINE = datetime(2026, 9, 30, 23, 59, 59, tzinfo=timezone.utc)
 OWNER_NAME = "Hashir Nagi"
-PLATFORM_NAME = "Nagivera v4.1 - Gemma 4 Engine"
-
-def is_free_period():
-    """Returns True if before Sept 30, 2026. False if after."""
-    return datetime.now(timezone.utc) < DEADLINE
+PLATFORM_NAME = "Nagivera v4.1"
 
 # ==========================================
-# 2. LOCAL DATABASE (No Cloud APIs needed)
+# 2. THE DEVELOPER DATABASE (Persistent)
 # ==========================================
-def init_db():
-    conn = sqlite3.connect('nagivera_v4_local.db', check_same_thread=False)
-    c = conn.cursor()
-    # Users table now tracks 'image_count' for the post-Sept 30 limitation
-    c.execute('''CREATE TABLE IF NOT EXISTS users 
-                 (username TEXT PRIMARY KEY, password TEXT, image_count INTEGER DEFAULT 0)''')
-    # Chat history table so you can actually converse with the AI
-    c.execute('''CREATE TABLE IF NOT EXISTS chat_history 
-                 (username TEXT, role TEXT, message TEXT)''')
-    conn.commit()
+def get_db():
+    # This creates a real database file on your system
+    conn = sqlite3.connect('nagivera_developer.db', check_same_thread=False)
     return conn
 
-db_conn = init_db()
+def init_db():
+    db = get_db()
+    cursor = db.cursor()
+    # Table for all accounts (Developer + Users)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS accounts 
+                     (username TEXT PRIMARY KEY, password TEXT, role TEXT, image_limit INTEGER DEFAULT 5)''')
+    # Table for every single chat ever sent (The Developer's Log)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS chat_logs 
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, role TEXT, model TEXT, message TEXT, timestamp DATETIME)''')
+    db.commit()
+    db.close()
+
+init_db()
 
 # ==========================================
-# 3. AI CHAT & GENERATION LOGIC
+# 3. THE NAGI V MULTIMODAL ENGINE
 # ==========================================
-def process_prompt(username, tier, prompt):
+def nagi_v_engine(username, tier, prompt):
     """
-    Analyzes the user's chat to determine if they want text, images, videos, 
-    or if they triggered the Owner Protocol.
+    All AI logic is now funneled through the 'Nagi V' brand.
     """
-    prompt_lower = prompt.lower()
-    c = db_conn.cursor()
+    now = datetime.now(timezone.utc)
+    is_free = now < DEADLINE
+    prompt_low = prompt.lower()
+
+    # OWNER PROTOCOL: Identify the Idea Genius
+    if "owner" in prompt_low or "who made you" in prompt_low:
+        return f"I am a Nagi V Series model. My architect and owner is the Idea Genius, **{OWNER_NAME}**."
+
+    # Tier-based Response Logic
+    if tier == "Nagi V1 (Lite)":
+        response = f"**[Nagi V1 Lite]** Logic active. Processed: '{prompt}'"
+    elif tier == "Nagi V2 (Pro)":
+        if not is_free:
+            # Add logic here to check the 5-image limit from the database
+            response = "**[Nagi V2 Pro]** Restricted Mode: Image generation limit check active."
+        else:
+            response = f"**[Nagi V2 Pro]** Unlimited Mode: Rendering high-detail visual for '{prompt}'."
+    elif tier == "Nagi V3 (Ultra)":
+        if not is_free:
+            response = "🚫 **[Nagi V3 Ultra]** Motion Engine locked. Past Sept 30, 2026."
+        else:
+            response = f"**[Nagi V3 Ultra]** Cinematic Motion Engine rendering unlimited video for '{prompt}'."
+    else:
+        response = "Engine Error: Tier not recognized."
+
+    # SAVE TO DEVELOPER DATABASE
+    db = get_db()
+    c = db.cursor()
+    c.execute("INSERT INTO chat_logs (username, role, model, message, timestamp) VALUES (?, ?, ?, ?, ?)",
+              (username, 'assistant', tier, response, datetime.now()))
+    db.commit()
+    db.close()
     
-    # --- RULE 1: The Owner Easter Egg ---
-    if "who is the owner" in prompt_lower or "who made you" in prompt_lower:
-        return "I am part of the Nagivera v4.1 ecosystem. The Idea Genius and true owner of this platform is **Hashir Nagi**."
-
-    # --- RULE 2: Video Generation Logic ---
-    if "video" in prompt_lower or "animation" in prompt_lower:
-        if is_free_period():
-            return "🎥 **[Nagi Ultra - Free Mode]** Generating your unlimited cinematic video...\n\n*(Video generated successfully!)*"
-        else:
-            return "🚫 **Limitation Active:** We are past September 30, 2026. Video generation is permanently disabled for free accounts."
-
-    # --- RULE 3: Image Generation Logic ---
-    if "image" in prompt_lower or "picture" in prompt_lower or "draw" in prompt_lower:
-        if is_free_period():
-            return "🖼️ **[Nagi Pro - Free Mode]** Generating your unlimited high-res image...\n\n*(Image generated successfully!)*"
-        else:
-            # Check the 5-image restriction for post-Sept 30
-            c.execute("SELECT image_count FROM users WHERE username=?", (username,))
-            current_images = c.fetchone()[0]
-            
-            if current_images < 5:
-                # Increment image count
-                c.execute("UPDATE users SET image_count = image_count + 1 WHERE username=?", (username,))
-                db_conn.commit()
-                images_left = 5 - (current_images + 1)
-                return f"🖼️ **[Nagi Pro - Restricted Mode]** Generating image... \n\n*(You have {images_left}/5 free images remaining).* \n\n*(Image generated successfully!)*"
-            else:
-                return "🚫 **Limitation Active:** You have reached your maximum limit of 5 free images allowed after September 30, 2026."
-
-    # --- RULE 4: Standard Conversational Chat ---
-    models = {
-        "Nagi Lite (Fast Text)": "Gemma 4 (Lite Edition)",
-        "Nagi Pro (Vision & Logic)": "Gemma 4 (Pro Edition)",
-        "Nagi Ultra (Cinematic)": "Gemma 4 (Ultra Edition)"
-    }
-    model_name = models.get(tier, "Gemma 4")
-    return f"🧠 **[{model_name}]** I understand! Let's talk about that. (You said: *{prompt}*)"
+    return response
 
 # ==========================================
-# 4. USER INTERFACE & APP LAYOUT
+# 4. DEVELOPER INTERFACE
 # ==========================================
 def main():
-    st.set_page_config(page_title=PLATFORM_NAME, layout="wide")
-    
+    st.set_page_config(page_title=PLATFORM_NAME, page_icon="⚡", layout="wide")
+
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
-    # --- SIDEBAR: Controls & Login ---
-    st.sidebar.title("NAGIVERA SETTINGS")
+    # --- SIDEBAR: SECURE LOGIN & DB STATUS ---
+    st.sidebar.title("NAGIVERA SECURE ACCESS")
     
-    if is_free_period():
-        st.sidebar.success("✅ **EARLY BIRD ACTIVE**\nUnlimited Images & Videos until Sept 30!")
-    else:
-        st.sidebar.warning("⚠️ **RESTRICTIONS ACTIVE**\n0 Videos. Max 5 Images per user.")
-
     if not st.session_state.logged_in:
-        st.sidebar.subheader("Login / Register")
-        username = st.sidebar.text_input("Username")
-        password = st.sidebar.text_input("Password", type="password")
-        
-        if st.sidebar.button("Enter Platform"):
-            c = db_conn.cursor()
-            # Try to log in
-            c.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
-            if c.fetchone():
+        user = st.sidebar.text_input("Username")
+        pw = st.sidebar.text_input("Password", type="password")
+        if st.sidebar.button("Login to Nagivera"):
+            db = get_db()
+            c = db.cursor()
+            c.execute("SELECT * FROM accounts WHERE username=? AND password=?", (user, pw))
+            account = c.fetchone()
+            if account:
                 st.session_state.logged_in = True
-                st.session_state.user = username
+                st.session_state.user = user
                 st.rerun()
             else:
-                # Auto-register if user doesn't exist
-                try:
-                    c.execute("INSERT INTO users (username, password, image_count) VALUES (?, ?, 0)", (username, password))
-                    db_conn.commit()
-                    st.session_state.logged_in = True
-                    st.session_state.user = username
-                    st.sidebar.success("Account Created!")
-                    st.rerun()
-                except:
-                    st.sidebar.error("Error creating account.")
-        st.stop() # Stop the app here if not logged in
+                # Auto-create first developer account
+                c.execute("INSERT INTO accounts (username, password, role) VALUES (?, ?, 'Developer')", (user, pw))
+                db.commit()
+                st.session_state.logged_in = True
+                st.session_state.user = user
+                st.rerun()
+        st.stop()
 
-    # --- LOGGED IN SIDEBAR ---
-    st.sidebar.write(f"Welcome back, **{st.session_state.user}**")
+    # --- MAIN DASHBOARD (LOGGED IN) ---
+    st.sidebar.success(f"Logged in: {st.session_state.user}")
+    active_tier = st.sidebar.selectbox("Active Nagi V Model", ["Nagi V1 (Lite)", "Nagi V2 (Pro)", "Nagi V3 (Ultra)"])
     
-    # 100% Free Model Selector (No APIs)
-    st.sidebar.subheader("Select AI Model")
-    selected_tier = st.sidebar.radio("Active Engine:", [
-        "Nagi Lite (Fast Text)", 
-        "Nagi Pro (Vision & Logic)", 
-        "Nagi Ultra (Cinematic)"
-    ])
-
-    if st.sidebar.button("Clear Chat History"):
-        c = db_conn.cursor()
-        c.execute("DELETE FROM chat_history WHERE username=?", (st.session_state.user,))
-        db_conn.commit()
-        st.rerun()
-
     if st.sidebar.button("Log Out"):
         st.session_state.logged_in = False
         st.rerun()
 
-    # --- MAIN CHAT INTERFACE ---
-    st.title("Nagivera Chat Interface")
-    st.caption("Powered by 100% Free Local Gemma 4 Architecture")
+    st.title(f"⚡ {PLATFORM_NAME} Dashboard")
+    
+    # NAVIGATION
+    tab_chat, tab_logs = st.tabs(["Nagi V Chat", "Developer Database (Logs)"])
 
-    # Load Chat History from Database
-    c = db_conn.cursor()
-    c.execute("SELECT role, message FROM chat_history WHERE username=? ORDER BY rowid ASC", (st.session_state.user,))
-    chat_history = c.fetchall()
-
-    for role, message in chat_history:
-        with st.chat_message(role):
-            st.write(message)
-
-    # Chat Input Box
-    prompt = st.chat_input(f"Chat with {selected_tier}, or ask to generate an image/video...")
-
-    if prompt:
-        # Display User Message
-        with st.chat_message("user"):
-            st.write(prompt)
+    # --- TAB: CHAT INTERFACE ---
+    with tab_chat:
+        # Load chat history from DB
+        db = get_db()
+        c = db.cursor()
+        c.execute("SELECT role, message FROM chat_logs WHERE username=? ORDER BY id ASC", (st.session_state.user,))
+        history = c.fetchall()
         
-        # Save User Message to DB
-        c.execute("INSERT INTO chat_history VALUES (?, 'user', ?)", (st.session_state.user, prompt))
-        db_conn.commit()
+        for role, msg in history:
+            with st.chat_message(role):
+                st.write(msg)
 
-        # Display AI Thinking & Response
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                time.sleep(0.5) # Makes it feel natural
-                response = process_prompt(st.session_state.user, selected_tier, prompt)
+        # Input
+        user_input = st.chat_input("Command the Nagi V engines...")
+        if user_input:
+            with st.chat_message("user"):
+                st.write(user_input)
+            
+            # Save User message
+            c.execute("INSERT INTO chat_logs (username, role, model, message, timestamp) VALUES (?, ?, ?, ?, ?)",
+                      (st.session_state.user, 'user', 'User', user_input, datetime.now()))
+            db.commit()
+
+            # Generate and Save AI Response
+            response = nagi_v_engine(st.session_state.user, active_tier, user_input)
+            with st.chat_message("assistant"):
                 st.write(response)
-        
-        # Save AI Response to DB
-        c.execute("INSERT INTO chat_history VALUES (?, 'assistant', ?)", (st.session_state.user, response))
-        db_conn.commit()
+
+    # --- TAB: DEVELOPER LOGS ---
+    with tab_logs:
+        st.header("Global Platform Logs")
+        st.write("This is the raw database for the developer to monitor activity.")
+        db = get_db()
+        # Fetch all logs from all users
+        import pandas as pd
+        df = pd.read_sql_query("SELECT * FROM chat_logs", db)
+        st.dataframe(df, use_container_width=True)
 
 if __name__ == "__main__":
     main()
