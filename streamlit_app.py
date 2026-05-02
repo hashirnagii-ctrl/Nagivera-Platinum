@@ -1,8 +1,25 @@
-/**
- * NAGIVERA v4.1 - UPGRADED CORE ENGINE
- * Conceived by Hashir Nagi (The Idea Genius)
- * Engineered in Pakistan
- */
+import streamlit as st
+import streamlit.components.v1 as components
+
+# Paste your JavaScript into this variable
+nagi_js_engine = """
+<script>
+    console.log("Nagivera Engine Loading...");
+    /** 
+     * Your Upgraded JavaScript Code goes here 
+     */
+    class NagiveraPlatform {
+        // ... (the rest of your JS code)
+    }
+    window.NagiEngine = new NagiveraPlatform();
+</script>
+<div style="color: white; background: #111; padding: 10px;">
+    Nagivera Engine v4.1 Active
+</div>
+"""
+
+# Call it in your app
+components.html(nagi_js_engine, height=200)
 
 class NagiveraPlatform {
     #deadline = new Date("2026-09-30T23:59:59Z");
