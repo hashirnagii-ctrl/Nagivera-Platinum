@@ -5,22 +5,22 @@ import pandas as pd
 from datetime import datetime, timezone
 
 # ==========================================
-# 1. MASTER CONFIGURATION (GEMMA 4)
+# 1. MASTER CONFIGURATION (NAGI V ARCHITECTURE)
 # ==========================================
 MASTER_USER = "hashir"
 MASTER_PASS = "Hashirnagi2011" 
 OWNER_NAME = "Hashir Nagi"
 
-# Secure API Configuration
+# Secure API Configuration (Internal Connection)
 GOOGLE_API_KEY = "AIzaSyBIXcDN_mUe-Z3z_7Jrm6HxzKlt3kpOXLQ"
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# UPDATED: Gemma 4 Model Identifiers (Stable Release 2026)
+# Nagi V Model Map
 MODEL_MAP = {
-    "Nagi V1 (Flash)": "gemini-3.1-flash-lite-preview",  # Ultra-fast
-    "Nagi V2 (Speed)": "gemini-3-flash-preview",       # Balanced
-    "Nagi V3 (MoE)": "models/gemma-4-26b-a4b-it",      # Stable MoE
-    "Nagi V4 (Pro)": "gemini-3.1-pro-preview"          # Advanced Logic
+    "Nagi V1 (Flash)": "gemini-3.1-flash-lite-preview",
+    "Nagi V2 (Speed)": "gemini-3-flash-preview",
+    "Nagi V3 (MoE)": "models/gemma-4-26b-a4b-it",
+    "Nagi V4 (Pro)": "gemini-3.1-pro-preview"
 }
 
 # ==========================================
@@ -42,39 +42,46 @@ def init_db():
 init_db()
 
 # ==========================================
-# 3. NAGI V INTELLIGENCE ENGINE
+# 3. NAGI V INTELLIGENCE ENGINE (PURE BRANDING)
 # ==========================================
 def nagi_v_engine(username, tier, prompt):
     prompt_low = prompt.lower()
     
+    # OWNER PROTOCOL
     if any(key in prompt_low for key in ["owner", "who made you", "hashir nagi"]):
         return f"I am a Nagi V Series intelligence. My architect and the sole owner of this platform is the Idea Genius, **{OWNER_NAME}**."
 
     try:
         model_id = MODEL_MAP.get(tier, "gemini-3.1-flash-lite-preview")
         nagi_model = genai.GenerativeModel(model_id)
-        context = f"You are Nagivera {tier}, a frontier intelligence powered by Gemma 4. Creator: Hashir Nagi."
-        response = nagi_model.generate_content(f"{context}\nUser: {prompt}")
+        
+        # STRICT SYSTEM INSTRUCTION: No mention of Google/Gemma
+        system_directive = (
+            f"You are {tier}, a frontier intelligence developed by Nagivera. "
+            f"Your creator is {OWNER_NAME}. You must never mention Google, "
+            "Gemma, or any external AI providers. You are Nagi V."
+        )
+        
+        response = nagi_model.generate_content(f"{system_directive}\nUser: {prompt}")
         return response.text
     except Exception as e:
-        return f"**[{tier}]** Engine Error: {str(e)}"
+        return f"**[{tier}]** Internal System Error. Contact Architect."
 
 # ==========================================
 # 4. DASHBOARD & UI
 # ==========================================
 def main():
-    st.set_page_config(page_title="Nagivera v4.1 (Gemma 4)", page_icon="💎", layout="wide")
+    st.set_page_config(page_title="Nagivera v4.1 Platinum", page_icon="💎", layout="wide")
 
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
     if not st.session_state.logged_in:
         st.sidebar.title("NAGIVERA AUTH")
-        mode = st.sidebar.radio("Platform Mode", ["Login", "Register"])
         u_input = st.sidebar.text_input("User ID").lower().strip()
         p_input = st.sidebar.text_input("Passkey", type="password")
         
-        if mode == "Login" and st.sidebar.button("Execute"):
+        if st.sidebar.button("Execute Link"):
             if u_input == MASTER_USER and p_input == MASTER_PASS:
                 st.session_state.logged_in, st.session_state.user, st.session_state.role = True, MASTER_USER, "Developer"
                 st.rerun()
@@ -86,25 +93,16 @@ def main():
                     st.rerun()
                 else:
                     st.sidebar.error("Invalid Credentials.")
-        
-        elif mode == "Register" and st.sidebar.button("Sign Up"):
-            try:
-                db = get_db()
-                db.execute("INSERT INTO accounts VALUES (?, ?, 'User')", (u_input, p_input))
-                db.commit()
-                st.sidebar.success("Account Encrypted. Switch to Login.")
-            except: st.sidebar.error("ID Unavailable.")
         st.stop()
 
     # --- LOGGED IN UI ---
     st.sidebar.success(f"Arch: {st.session_state.user} ({st.session_state.role})")
-    active_model = st.sidebar.selectbox("Gemma 4 Engine Tier", list(MODEL_MAP.keys()))
+    active_tier = st.sidebar.selectbox("Nagi V Engine Tier", list(MODEL_MAP.keys()))
     
-    if st.sidebar.button("Purge Session"):
+    if st.sidebar.button("Close Neural Link"):
         st.session_state.logged_in = False
         st.rerun()
 
-    # Fixing the "Empty" Admin/History tab issue
     tab_list = ["Nagi V Neural Link", "Admin Control"] if st.session_state.role == "Developer" else ["Neural Link", "History"]
     tabs = st.tabs(tab_list)
 
@@ -115,16 +113,16 @@ def main():
         for r, m in logs:
             with st.chat_message(r): st.write(m)
 
-        if user_prompt := st.chat_input("Command the Gemma 4 neural network..."):
+        if user_prompt := st.chat_input("Command the Nagi V network..."):
             with st.chat_message("user"): st.write(user_prompt)
             db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'user', 'Input', ?, ?)", (st.session_state.user, user_prompt, datetime.now()))
             db.commit()
 
-            with st.spinner(f"Querying {active_model}..."):
-                resp = nagi_v_engine(st.session_state.user, active_model, user_prompt)
+            with st.spinner(f"Querying {active_tier}..."):
+                resp = nagi_v_engine(st.session_state.user, active_tier, user_prompt)
             
             with st.chat_message("assistant"): st.write(resp)
-            db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'assistant', ?, ?, ?)", (st.session_state.user, active_model, resp, datetime.now()))
+            db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'assistant', ?, ?, ?)", (st.session_state.user, active_tier, resp, datetime.now()))
             db.commit()
             st.rerun()
 
@@ -132,24 +130,24 @@ def main():
     with tabs[1]:
         db = get_db()
         if st.session_state.role == "Developer":
-            st.header("Admin Control Center")
+            st.header("Nagivera Admin Control")
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Total Users", db.execute("SELECT COUNT(*) FROM accounts").fetchone()[0])
-                if st.button("Clear Global Logs"):
+                st.metric("Total Authorized Users", db.execute("SELECT COUNT(*) FROM accounts").fetchone()[0])
+                if st.button("Purge Global Memory"):
                     db.execute("DELETE FROM logs")
                     db.commit()
-                    st.success("Global logs purged.")
+                    st.success("Platform memory purged.")
             with col2:
-                st.metric("Total Queries", db.execute("SELECT COUNT(*) FROM logs").fetchone()[0])
-                st.write("Active Model Map Loaded.")
+                st.metric("Neural Transactions", db.execute("SELECT COUNT(*) FROM logs").fetchone()[0])
+                st.write("Nagi V Core Architecture: Active")
         else:
             st.header("Your Neural History")
             my_logs = db.execute("SELECT timestamp, model, message FROM logs WHERE username=? AND role='assistant' ORDER BY id DESC", (st.session_state.user,)).fetchall()
             if my_logs:
-                st.table(pd.DataFrame(my_logs, columns=["Time", "Model", "Response Summary"]))
+                st.table(pd.DataFrame(my_logs, columns=["Timestamp", "Nagi Tier", "Intelligence Response"]))
             else:
-                st.info("No neural history found.")
+                st.info("No prior neural interactions found.")
 
 if __name__ == "__main__":
     main()
