@@ -14,7 +14,7 @@ DEADLINE = datetime(2026, 9, 30, 23, 59, 59, tzinfo=timezone.utc)
 
 # API Configuration - Update with your real key
 GOOGLE_API_KEY = "AIzaSyDoji3yAGbR3B53Rh4EcklNPfVVfy1lpT0"
-genai.configure(api_key=AIzaSyDoji3yAGbR3B53Rh4EcklNPfVVfy1lpT0)
+genai.configure(api_key=GOOGLE_API_KEY)
 
 # Map Nagi tiers to valid Google AI models
 MODEL_MAP = {
