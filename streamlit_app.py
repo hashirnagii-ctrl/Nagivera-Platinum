@@ -3,6 +3,7 @@ import google.generativeai as genai
 import sqlite3
 import pandas as pd
 from datetime import datetime
+from streamlit_javascript import st_javascript
 
 # ==========================================
 # 1. MASTER CONFIGURATION (SECRET)
@@ -32,7 +33,6 @@ def init_db():
     c.execute('CREATE TABLE IF NOT EXISTS accounts (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
     c.execute('''CREATE TABLE IF NOT EXISTS logs 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, role TEXT, model TEXT, message TEXT, timestamp DATETIME)''')
-    # Master account is inserted but will be filtered out of views
     c.execute("INSERT OR IGNORE INTO accounts VALUES (?, ?, 'Developer')", (MASTER_USER, MASTER_PASS))
     db.commit()
     db.close()
@@ -80,22 +80,33 @@ def main():
                     st.error("Access Denied.")
 
         with tab_reg:
-            st.info("Registration creates a permanent Business Identity.")
-            u_reg = st.text_input("New User ID", key="r_u").lower().strip()
-            p_reg = st.text_input("New Passkey", type="password", key="r_p")
-            if st.button("Encrypt & Save"):
-                if u_reg and p_reg:
-                    # Prevent anyone from trying to register as the master name
-                    if u_reg == MASTER_USER:
-                        st.error("Reserved Identity.")
-                    else:
-                        try:
-                            db = get_db()
-                            db.execute("INSERT INTO accounts VALUES (?, ?, 'User')", (u_reg, p_reg))
-                            db.commit()
-                            db.close()
-                            st.success("Identity Locked.")
-                        except: st.error("ID Unavailable.")
+            # CHECK FOR DEVICE LOCK VIA JAVASCRIPT LOCALSTORAGE
+            device_check = st_javascript("localStorage.getItem('nagivera_identity_locked');")
+            
+            if device_check == "true":
+                st.warning("⚠️ This device is already linked to an existing Business Identity. One account per device permitted.")
+            else:
+                st.info("Registration creates a permanent Business Identity for this device.")
+                u_reg = st.text_input("New User ID", key="r_u").lower().strip()
+                p_reg = st.text_input("New Passkey", type="password", key="r_p")
+                
+                if st.button("Encrypt & Save Identity"):
+                    if u_reg and p_reg:
+                        if u_reg == MASTER_USER:
+                            st.error("Reserved Identity.")
+                        else:
+                            try:
+                                db = get_db()
+                                db.execute("INSERT INTO accounts VALUES (?, ?, 'User')", (u_reg, p_reg))
+                                db.commit()
+                                db.close()
+                                
+                                # LOCK THE DEVICE LOCALLY
+                                st_javascript("localStorage.setItem('nagivera_identity_locked', 'true');")
+                                st.success("Identity Locked to this device. Proceed to Login.")
+                                st.rerun()
+                            except: 
+                                st.error("ID Unavailable.")
         st.stop()
 
     # --- AUTHORIZED PLATFORM ---
@@ -135,22 +146,24 @@ def main():
         db = get_db()
         if st.session_state.role == "Developer":
             st.header("Master Admin Control")
-            
-            # IDENTITY DIRECTORY (HIDDEN MASTER)
+            if st.button("🔄 Refresh Neural Records"):
+                st.rerun()
+            st.divider()
+
             st.subheader("🔑 Identity Directory")
-            # This query specifically EXCLUDES the master user from the list
             all_accounts = db.execute("SELECT username, password, role FROM accounts WHERE username != ?", (MASTER_USER,)).fetchall()
             if all_accounts:
                 st.dataframe(pd.DataFrame(all_accounts, columns=["User ID", "Passkey", "Access Level"]), use_container_width=True)
             else:
                 st.info("No external identities registered.")
 
-            # GLOBAL HISTORY
             st.subheader("📜 Global Neural History")
             all_logs = db.execute("SELECT timestamp, username, model, message FROM logs ORDER BY id DESC").fetchall()
             st.dataframe(pd.DataFrame(all_logs, columns=["Time", "User", "Tier", "Data"]), use_container_width=True)
         else:
             st.header("Permanent Neural History")
+            if st.button("🔄 Refresh History"):
+                st.rerun()
             my_logs = db.execute("SELECT timestamp, model, message FROM logs WHERE username=? AND role='assistant' ORDER BY id DESC", (st.session_state.user,)).fetchall()
             if my_logs:
                 st.dataframe(pd.DataFrame(my_logs, columns=["Time", "Tier", "Intelligence Output"]), use_container_width=True)
