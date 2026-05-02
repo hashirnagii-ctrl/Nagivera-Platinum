@@ -17,10 +17,10 @@ genai.configure(api_key=GOOGLE_API_KEY)
 
 # UPDATED: Gemma 4 Model Identifiers (Stable Release 2026)
 MODEL_MAP = {
-    "Nagi V1 (Mobile/IoT)": "gemma-4-e2b-it",        # 2B Effective, supports Audio
-    "Nagi V2 (Balanced)": "gemma-4-e4b-it",         # 4B Effective, supports Audio
-    "Nagi V3 (MoE Reasoning)": "gemma-4-26b-a4b-it", # 26B MoE, 256K Context
-    "Nagi V4 (Frontier Dense)": "gemma-4-31b-it"    # 31B Dense, Top-tier reasoning
+    "Nagi V1 (Mobile/IoT)": "models/gemma-4-e2b-it",        # Add 'models/' prefix
+    "Nagi V2 (Balanced)": "models/gemma-4-e4b-it",         
+    "Nagi V3 (MoE Reasoning)": "models/gemma-4-26b-a4b-it", 
+    "Nagi V4 (Frontier Dense)": "models/gemma-4-31b-it"    
 }
 
 # ==========================================
