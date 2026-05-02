@@ -12,8 +12,9 @@ MASTER_PASS = "Hashirnagi2011"
 OWNER_NAME = "Hashir Nagi"
 DEADLINE = datetime(2026, 9, 30, 23, 59, 59, tzinfo=timezone.utc)
 
-# API Configuration
-GOOGLE_API_KEY = "AIzaSyDoji3yAGbR3B53Rh4EckLNPfVVfy1lpT0"
+# IMPORTANT: Get a NEW key from https://aistudio.google.com/
+# Replace the string below with your new key.
+GOOGLE_API_KEY = "AIzaSyBW6AThefYemxCH16Jm3wmanfrqqOn_z_s"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 MODEL_MAP = {
@@ -32,7 +33,7 @@ def init_db():
     db = get_db()
     c = db.cursor()
     c.execute('CREATE TABLE IF NOT EXISTS accounts (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
-    # Ensure Developer account is always there
+    # Ensure Developer account is always present
     c.execute("INSERT OR IGNORE INTO accounts VALUES (?, ?, 'Developer')", (MASTER_USER, MASTER_PASS))
     c.execute('''CREATE TABLE IF NOT EXISTS logs 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, role TEXT, model TEXT, message TEXT, timestamp DATETIME)''')
@@ -47,17 +48,20 @@ init_db()
 def nagi_v_engine(username, tier, prompt):
     prompt_low = prompt.lower()
     
-    # OWNER PROTOCOL
+    # OWNER PROTOCOL: Works even if the API Key is dead
     if any(key in prompt_low for key in ["owner", "who made you", "hashir nagi"]):
         return f"I am a Nagi V Series intelligence. My architect and the sole owner of this platform is the Idea Genius, **{OWNER_NAME}**."
 
     try:
         model_name = MODEL_MAP.get(tier, "gemini-1.5-flash")
         nagi_model = genai.GenerativeModel(model_name)
-        context = f"You are Nagivera {tier}. Your creator is Hashir Nagi. Answer with high-level intelligence."
+        context = f"You are Nagivera {tier}. Your creator is Hashir Nagi. Provide high-intelligence responses."
+        
         response = nagi_model.generate_content(f"{context}\nUser: {prompt}")
         return response.text
     except Exception as e:
+        if "API_KEY_INVALID" in str(e):
+            return f"⚠️ **[{tier}] Engine Offline:** The current API Key is invalid or expired. Please update the key in the script."
         return f"**[{tier}]** Intelligence error: {str(e)}"
 
 # ==========================================
@@ -66,6 +70,7 @@ def nagi_v_engine(username, tier, prompt):
 def main():
     st.set_page_config(page_title="Nagivera v4.1", page_icon="⚡", layout="wide")
 
+    # Session State Initialization
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
     if 'user' not in st.session_state:
@@ -77,15 +82,15 @@ def main():
     if not st.session_state.logged_in:
         st.sidebar.title("NAGIVERA SECURE ACCESS")
         
-        # Toggle between Login and Register
-        auth_mode = st.sidebar.radio("Choose Action", ["Login", "Register"])
+        # User Choice: Login or Register
+        auth_mode = st.sidebar.radio("System Access", ["Login", "Create Account"])
         
         u_input = st.sidebar.text_input("Username").lower().strip()
         p_input = st.sidebar.text_input("Password", type="password")
         
         if auth_mode == "Login":
-            if st.sidebar.button("Login"):
-                # Master Check
+            if st.sidebar.button("Access Engine"):
+                # Check for Master Developer
                 if u_input == MASTER_USER and p_input == MASTER_PASS:
                     st.session_state.logged_in = True
                     st.session_state.user = MASTER_USER
@@ -102,12 +107,13 @@ def main():
                         st.session_state.role = result[0]
                         st.rerun()
                     else:
-                        st.sidebar.error("Invalid credentials.")
+                        st.sidebar.error("Invalid credentials. Try again or register.")
         
-        else: # Register Mode
-            if st.sidebar.button("Create Account"):
+        else: # Account Creation Mode
+            st.sidebar.info("New accounts are granted 'User' tier access.")
+            if st.sidebar.button("Register New Account"):
                 if u_input == MASTER_USER:
-                    st.sidebar.error("This username is reserved.")
+                    st.sidebar.error("This username is reserved by the Architect.")
                 elif len(u_input) < 3 or len(p_input) < 4:
                     st.sidebar.warning("Username/Password too short.")
                 else:
@@ -116,28 +122,30 @@ def main():
                         c = db.cursor()
                         c.execute("INSERT INTO accounts VALUES (?, ?, 'User')", (u_input, p_input))
                         db.commit()
-                        st.sidebar.success("Account created! Please switch to Login.")
+                        st.sidebar.success("Account created successfully! Switch to Login to enter.")
                     except sqlite3.IntegrityError:
-                        st.sidebar.error("Username already exists.")
+                        st.sidebar.error("That username already exists in the Nagivera database.")
         st.stop()
 
     # --- AUTHORIZED DASHBOARD ---
-    st.sidebar.success(f"Access Granted: {st.session_state.user}")
-    st.sidebar.info(f"Role: {st.session_state.role}")
+    st.sidebar.success(f"Verified: {st.session_state.user}")
+    st.sidebar.info(f"System Role: {st.session_state.role}")
     
-    active_model = st.sidebar.selectbox("Active Nagi V Model", list(MODEL_MAP.keys()))
+    active_model = st.sidebar.selectbox("Select Nagi V Intelligence", list(MODEL_MAP.keys()))
     
     if st.sidebar.button("Log Out"):
-        st.session_state.logged_in = False
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
         st.rerun()
 
     # --- NAVIGATION TABS ---
     tab_titles = ["Nagi V Chat"]
     if st.session_state.role == "Developer":
-        tab_titles.append("Developer Database (Logs)")
+        tab_titles.append("Admin Logs")
     
     tabs = st.tabs(tab_titles)
 
+    # TAB 1: INTERACTIVE CHAT
     with tabs[0]:
         db = get_db()
         c = db.cursor()
@@ -155,7 +163,7 @@ def main():
                       (st.session_state.user, user_prompt, datetime.now()))
             db.commit()
 
-            with st.spinner("Processing..."):
+            with st.spinner(f"Contacting {active_model} Tier..."):
                 response = nagi_v_engine(st.session_state.user, active_model, user_prompt)
             
             with st.chat_message("assistant"):
@@ -165,12 +173,19 @@ def main():
                       (st.session_state.user, active_model, response, datetime.now()))
             db.commit()
 
+    # TAB 2: DEVELOPER LOGS
     if len(tabs) > 1:
         with tabs[1]:
-            st.header("Master Control Center")
+            st.header("Nagivera Central Log Database")
             db = get_db()
             df = pd.read_sql_query("SELECT * FROM logs", db)
             st.dataframe(df, use_container_width=True)
+            
+            if st.button("Clear Global Chat History"):
+                c = db.cursor()
+                c.execute("DELETE FROM logs")
+                db.commit()
+                st.rerun()
 
 if __name__ == "__main__":
     main()
