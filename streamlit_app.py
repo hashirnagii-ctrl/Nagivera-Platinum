@@ -2,21 +2,15 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import datetime
-import uuid
 import requests
 import json
 
-# ==========================================
-# 1. SYSTEM CONFIGURATION
-# ==========================================
+# --- CONFIG ---
 OWNER_NAME = "Hashir Nagi"
 MASTER_USER = "hashir"
-MASTER_PASS = "Hashirnagi2011" 
+MASTER_PASS = "Hashirnagi2011"
+NAGIVERA_KEY = "sk-or-v1-c4689f48111df8ff64acad..." # Ensure this is your fresh key
 
-# CLOUD ACCESS KEY (OpenRouter)
-NAGIVERA_KEY = "sk-or-v1-c4689f48111df8ff64acad..." # Update with your active key
-
-# Nagivera Neural Mapping (Hybrid: Local + Cloud)
 NAGI_V_MODELS = {
     "Nagi V (Core-Flash)": {"id": "glm-4-7-flash", "type": "local"},
     "Nagi V (Logic-Pro)": {"id": "deepseek-v3.2", "type": "local"},
@@ -24,82 +18,71 @@ NAGI_V_MODELS = {
     "Nagi 3.1 (Cloud)": {"id": "google/gemini-3.1-flash-lite-preview", "type": "cloud"}
 }
 
-# ==========================================
-# 2. HYBRID NEURAL ENGINE
-# ==========================================
+def get_db():
+    conn = sqlite3.connect('nagi_v_final.db', check_same_thread=False)
+    conn.execute('''CREATE TABLE IF NOT EXISTS security_logs 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, attempted_pass TEXT, 
+                  timestamp DATETIME, status TEXT)''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS logs 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, role TEXT, 
+                  model TEXT, message TEXT, timestamp DATETIME)''')
+    return conn
+
 def nagivera_engine(model_label, prompt):
     config = NAGI_V_MODELS.get(model_label)
-    model_id = config["id"]
-    
     try:
-        # --- PATH A: LOCAL INTELLIGENCE (Ollama/LM Studio) ---
         if config["type"] == "local":
-            response = requests.post(
-                url="http://localhost:11434/api/generate", # Default Ollama Port
-                json={
-                    "model": model_id,
-                    "prompt": f"System: You are Nagivera. User: {prompt}",
-                    "stream": False
-                }
-            )
-            return response.json().get('response', 'NAGI LOCAL ERROR: No response data.')
-
-        # --- PATH B: CLOUD INTELLIGENCE (OpenRouter) ---
+            response = requests.post("http://localhost:11434/api/generate", 
+                                     json={"model": config["id"], "prompt": prompt, "stream": False}, timeout=5)
+            return response.json().get('response')
         else:
-            response = requests.post(
-                url="https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {NAGIVERA_KEY}",
-                    "X-Title": "Nagivera v4.3.9",
-                },
-                json={
-                    "model": model_id,
-                    "max_tokens": 2048, # Capped to prevent credit errors
-                    "messages": [
-                        {"role": "system", "content": f"You are Nagivera. Founder: {OWNER_NAME}."},
-                        {"role": "user", "content": prompt}
-                    ]
-                }
-            )
-            res_json = response.json()
-            if 'choices' in res_json:
-                return res_json['choices'][0]['message']['content']
-            else:
-                error_msg = res_json.get('error', {}).get('message', 'Neural Link Rejected.')
-                return f"NAGI SYSTEM ALERT: {error_msg}"
-            
-    except Exception as e:
-        return f"NAGI SYSTEM ALERT: Neural Link Interrupted. Ensure local server is running."
+            response = requests.post("https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {NAGIVERA_KEY}"},
+                json={"model": config["id"], "max_tokens": 1000, "messages": [{"role": "user", "content": prompt}]})
+            return response.json()['choices'][0]['message']['content']
+    except:
+        return "NAGI SYSTEM ALERT: Neural Link Interrupted. Switch to Cloud or start Ollama."
 
-# ==========================================
-# 3. INTERFACE ARCHITECTURE (Simplified for dev)
-# ==========================================
 def main():
-    st.set_page_config(page_title="Nagivera v4.3.9", page_icon="💎", layout="wide")
-    db = sqlite3.connect('nagi_v_final.db', check_same_thread=False)
+    st.set_page_config(page_title="Nagivera v4.3.9", layout="wide")
+    db = get_db()
 
-    # Login Logic (Assuming session_state from previous version)
-    if 'logged_in' not in st.session_state or not st.session_state.logged_in:
-        # ... [Same Login UI as v4.3.8] ...
-        st.session_state.logged_in = True # Auto-bypass for code brevity
-        st.session_state.user = "hashir"
-        st.session_state.role = "Developer"
+    if 'logged_in' not in st.session_state:
+        st.title("RYZEN CORE: INITIALIZE")
+        u = st.text_input("NAGI ID")
+        p = st.text_input("PASSKEY", type="password")
+        if st.button("🚀 BOOT SYSTEM"):
+            if u == MASTER_USER and p == MASTER_PASS:
+                st.session_state.logged_in = True
+                db.execute("INSERT INTO security_logs (username, attempted_pass, timestamp, status) VALUES (?,?,?,?)", (u, p, datetime.now(), "SUCCESS"))
+                db.commit()
+                st.rerun()
+        st.stop()
 
+    # --- SIDEBAR ---
     with st.sidebar:
-        st.title("🧬 NAGI V CORE")
-        # Selector for the new local names
-        active_nagi = st.selectbox("Select Neural Core", options=list(NAGI_V_MODELS.keys()))
-        
-        status = "🟢 LOCAL ACTIVE" if NAGI_V_MODELS[active_nagi]["type"] == "local" else "🌐 CLOUD ACTIVE"
-        st.info(f"Status: {status}")
+        st.header("🧬 NAGI V")
+        active_nagi = st.selectbox("Neural Core", options=list(NAGI_V_MODELS.keys()))
+        if st.button("🛑 SHUTDOWN"):
+            st.session_state.logged_in = False
+            st.rerun()
 
-    # CHAT INTERFACE
-    if prompt := st.chat_input(f"Commanding {active_nagi}..."):
-        with st.chat_message("user"): st.write(prompt)
-        
-        ans = nagivera_engine(active_nagi, prompt)
-        
-        with st.chat_message("assistant"): st.write(ans)
+    # --- TABS (Admin is back here) ---
+    tab1, tab2 = st.tabs(["💬 Neural Link", "🛡️ Admin Control"])
+
+    with tab1:
+        if prompt := st.chat_input("Command..."):
+            st.chat_message("user").write(prompt)
+            ans = nagivera_engine(active_nagi, prompt)
+            st.chat_message("assistant").write(ans)
+            db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?,?,?,?,?)", ("hashir", "assistant", active_nagi, ans, datetime.now()))
+            db.commit()
+
+    with tab2:
+        st.subheader("🕵️ SECURITY SURVEILLANCE")
+        st.dataframe(pd.read_sql_query("SELECT * FROM security_logs", db), use_container_width=True)
+        st.subheader("📋 MESSAGE ARCHIVE")
+        st.dataframe(pd.read_sql_query("SELECT * FROM logs", db), use_container_width=True)
 
 if __name__ == "__main__":
     main()
