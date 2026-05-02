@@ -9,19 +9,19 @@ from datetime import datetime
 # ==========================================
 MASTER_USER = "hashir"
 MASTER_PASS = "Hashirnagi2011" 
-OWNER_NAME = "Hashir Nagi"
+OWNER_NAME = "Hashir Nagi" #
 
-# Locked to Gemma 4 Architecture
-GOOGLE_API_KEY = "AIzaSyBIXcDN_mUe-Z3z_7Jrm6HxzKlt3kpOXLQ"
+# Locked to Gemma 4 Architecture via NAGI V protocol
+GOOGLE_API_KEY = "AIzaSyBolwEZUN8GO_n1dfKw-B_Q0VFQipfxsmc"
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# Exclusive Gemma 4 Mapping
+# Exclusive NAGI V Mapping
 MODEL_MAP = {
-    "Nagi V1 (Gemma 4 Base)": "models/gemma-4-26b-a4b-it",
-    "Nagi V2 (Gemma 4 Speed)": "models/gemma-4-26b-a4b-it",
-    "Nagi V3 (Gemma 4 MoE)": "models/gemma-4-26b-a4b-it",
-    "Nagi V4 (Gemma 4 Ultra)": "models/gemma-4-26b-a4b-it"
-}
+    "NAGI V1 (Alpha)": "models/gemma-4-26b-a4b-it",
+    "NAGI V2 (Beta)": "models/gemma-4-26b-a4b-it",
+    "NAGI V3 (MoE)": "models/gemma-4-26b-a4b-it",
+    "NAGI V4 (Platinum)": "models/gemma-4-26b-a4b-it"
+} #
 
 # ==========================================
 # 2. DATABASE & SESSION PERSISTENCE
@@ -42,36 +42,37 @@ def init_db():
 init_db()
 
 # ==========================================
-# 3. NAGI V ENGINE (Gemma 4 Implementation)
+# 3. NAGI V ENGINE (Branding Enforcement)
 # ==========================================
 def nagi_v_engine(tier, prompt):
     model_id = "models/gemma-4-26b-a4b-it"
     try:
         nagi_model = genai.GenerativeModel(model_id)
-        system_directive = f"Identity: {tier}. Creator: {OWNER_NAME}. Architecture: Gemma 4 MoE. System Security: Platinum Tier."
+        # Strict Nagi V Identity Directive
+        system_directive = f"You are {tier}, a NAGI V intelligence. You were created by {OWNER_NAME}. Never refer to yourself as anything other than NAGI V or NAGI." #
         response = nagi_model.generate_content(f"{system_directive}\nUser: {prompt}")
         return response.text
     except Exception as e:
-        return f"Nagi V Core Connection Error: {str(e)}"
+        return f"NAGI V Core Connection Error." #
 
 # ==========================================
-# 4. FRONT-END INTERFACE
+# 4. FRONT-END INTERFACE (NAGI PLATINUM)
 # ==========================================
 def main():
-    st.set_page_config(page_title="Nagivera v4.1 Platinum", page_icon="💎", layout="wide")
+    st.set_page_config(page_title="NAGIVERA v4.1 Platinum", page_icon="💎", layout="wide") #
 
-    # SESSION PERSISTENCE (Ensures user stays logged in on refresh)
+    # SESSION PERSISTENCE
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
-    # --- LOGIN & REGISTRATION SCREEN ---
+    # --- NAGI ACCESS PORTAL ---
     if not st.session_state.logged_in:
-        st.title("💎 NAGIVERA PLATINUM ACCESS")
-        tab_login, tab_reg = st.tabs(["Neural Login", "Register Identity"])
+        st.title("💎 NAGI PLATINUM ACCESS") #
+        tab_login, tab_reg = st.tabs(["NAGI Login", "Register Identity"])
         
         with tab_login:
-            u_log = st.text_input("User ID", key="l_u").lower().strip()
-            p_log = st.text_input("Passkey", type="password", key="l_p")
+            u_log = st.text_input("NAGI ID", key="l_u").lower().strip()
+            p_log = st.text_input("NAGI Passkey", type="password", key="l_p")
             
             col1, col2, col3 = st.columns([1,1,1])
             with col1:
@@ -88,15 +89,15 @@ def main():
                 st.button("🔗 Sign in with Google")
             with col3:
                 if st.button("Forgot Passkey?"):
-                    st.info(f"System Lockdown: Contact {OWNER_NAME} for manual passkey recovery.")
+                    st.info(f"System Lockdown: Contact {OWNER_NAME} for recovery.")
 
         with tab_reg:
             if "device_locked" in st.query_params:
-                st.warning("⚠️ This device is already linked to a Nagi Business Identity.")
+                st.warning("⚠️ This device is already linked to a NAGI Business Identity.") #
             else:
-                u_reg = st.text_input("New User ID", key="r_u").lower().strip()
-                p_reg = st.text_input("New Passkey", type="password", key="r_p")
-                if st.button("Encrypt & Save Identity"):
+                u_reg = st.text_input("New NAGI ID", key="r_u").lower().strip()
+                p_reg = st.text_input("New NAGI Passkey", type="password", key="r_p")
+                if st.button("Encrypt Identity"):
                     if u_reg and p_reg:
                         try:
                             db = get_db()
@@ -104,32 +105,31 @@ def main():
                             db.commit()
                             db.close()
                             st.query_params["device_locked"] = "true"
-                            st.success("Identity Locked to Hardware. Proceed to Neural Login.")
+                            st.success("Identity Locked to Hardware.")
                         except: st.error("ID Unavailable.")
         st.stop()
 
-    # --- AUTHORIZED PLATFORM ---
-    # Top Left Refresh Buttons
+    # --- NAGI V OPERATING ENVIRONMENT ---
     with st.sidebar:
-        st.title("Nagi V Core")
-        if st.button("🔄 Reset Neural Core", help="Use if AI connection fails"):
+        st.title("NAGI V Core") #
+        if st.button("🔄 Reset NAGI V", help="Refresh neural connection"):
             st.rerun()
         st.divider()
-        active_tier = st.selectbox("Engine Tier (Gemma 4 Locked)", list(MODEL_MAP.keys()))
+        active_tier = st.selectbox("NAGI V Engine Tier", list(MODEL_MAP.keys())) #
         if st.button("Terminate Link"):
             st.session_state.logged_in = False
             st.rerun()
 
-    tabs = st.tabs(["Neural Link", "Admin Control" if st.session_state.role == "Developer" else "History"])
+    tabs = st.tabs(["NAGI Neural Link", "NAGI Admin" if st.session_state.role == "Developer" else "NAGI History"]) #
 
-    # TAB 1: NEURAL LINK (CHAT)
+    # TAB 1: NAGI NEURAL LINK (CHAT)
     with tabs[0]:
         db = get_db()
         chat_data = db.execute("SELECT role, message FROM logs WHERE username=? ORDER BY id ASC", (st.session_state.user,)).fetchall()
         for r, m in chat_data:
             with st.chat_message(r): st.write(m)
 
-        if user_prompt := st.chat_input("Input command to Gemma 4..."):
+        if user_prompt := st.chat_input("Enter NAGI command..."): #
             with st.chat_message("user"): st.write(user_prompt)
             db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'user', ?, ?, ?)", 
                        (st.session_state.user, active_tier, user_prompt, datetime.now()))
@@ -143,18 +143,18 @@ def main():
             db.close()
             st.rerun()
 
-    # TAB 2: DATA VISIBILITY
+    # TAB 2: NAGI ADMIN
     with tabs[1]:
         db = get_db()
         if st.session_state.role == "Developer":
-            if st.button("🔄 Refresh Master Records"): st.rerun()
+            if st.button("🔄 Refresh NAGI Records"): st.rerun()
             all_accounts = db.execute("SELECT username, role FROM accounts WHERE username != ?", (MASTER_USER,)).fetchall()
-            st.subheader("🔑 Platinum Identity Directory")
+            st.subheader("🔑 NAGI Identity Directory") #
             st.dataframe(pd.DataFrame(all_accounts, columns=["User ID", "Access Level"]), use_container_width=True)
             
-            st.subheader("📜 Global System Logs")
+            st.subheader("📜 Global NAGI Logs") #
             all_logs = db.execute("SELECT timestamp, username, message FROM logs ORDER BY id DESC").fetchall()
-            st.dataframe(pd.DataFrame(all_logs, columns=["Time", "User", "Data Stream"]), use_container_width=True)
+            st.dataframe(pd.DataFrame(all_logs, columns=["Time", "User", "NAGI Data"]), use_container_width=True)
         db.close()
 
 if __name__ == "__main__":
