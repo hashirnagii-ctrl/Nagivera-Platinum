@@ -13,7 +13,11 @@ OWNER_NAME = "Hashir Nagi"
 MASTER_USER = "hashir"
 MASTER_PASS = "Hashirnagi2011" 
 
-# Intelligence Mapping: Verified Compatible Models for Nagi V
+# HARDCODED NEURAL ACCESS KEY
+# Note: Ensure this key is active in your OpenRouter dashboard
+NAGIVERA_KEY = "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"
+
+# Verified Compatible Models for Nagi V Protocols
 NAGI_V_MODELS = {
     "Nagi 2.5 (Lite)": "google/gemini-2.5-flash-lite", 
     "Nagi 2.5 (Flash)": "google/gemini-2.5-flash",     
@@ -48,35 +52,32 @@ def get_db():
 # ==========================================
 # 3. NAGIVERA NEURAL ENGINE
 # ==========================================
-def nagivera_engine(model_label, prompt, api_key):
-    if not api_key:
-        return "NAGI SYSTEM ALERT: Neural Access Key Missing. Provide key in Sidebar."
-    
+def nagivera_engine(model_label, prompt):
     model_id = NAGI_V_MODELS.get(model_label)
     try:
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {api_key}",
+                "Authorization": f"Bearer {NAGIVERA_KEY}",
                 "HTTP-Referer": "http://localhost:8501", 
                 "X-Title": "Nagivera v4.3.8",
             },
             data=json.dumps({
                 "model": model_id,
                 "messages": [
-                    {"role": "system", "content": f"You are Nagivera, the elite Nagi V Intelligence core. Founder: {OWNER_NAME}. Character: Insightful, technical, and supportive."},
+                    {"role": "system", "content": f"You are Nagivera, the elite Nagi V Intelligence core. Founder: {OWNER_NAME}."},
                     {"role": "user", "content": prompt}
                 ]
             })
         )
         res_json = response.json()
         
-        # Check if 'choices' exists to avoid the error seen in image_7b8dd5.png
         if 'choices' in res_json:
             return res_json['choices'][0]['message']['content']
         else:
-            error_details = res_json.get('error', {}).get('message', 'Unknown API Error')
-            return f"NAGI SYSTEM ALERT: API rejected request. Reason: {error_details}"
+            # Captures specific errors like "User not found" or "Insufficient Credits"
+            error_msg = res_json.get('error', {}).get('message', 'Unknown Neural Error')
+            return f"NAGI SYSTEM ALERT: API Error - {error_msg}"
             
     except Exception as e:
         return f"NAGI SYSTEM ALERT: Neural Link Interrupted. {str(e)}"
@@ -88,7 +89,6 @@ def main():
     st.set_page_config(page_title="Nagivera v4.3.8", page_icon="💎", layout="wide")
     db = get_db()
 
-    # Generate or retrieve unique device hardware ID
     if 'device_id' not in st.session_state:
         st.session_state.device_id = str(uuid.getnode())
 
@@ -102,7 +102,7 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    # --- RYZEN CORE LOGIN SYSTEM ---
+    # --- RYZEN CORE LOGIN SYSTEM (Surveillance Active) ---
     if 'logged_in' not in st.session_state or not st.session_state.logged_in:
         st.title("RYZEN CORE: INITIALIZE NAGIVERA")
         u = st.text_input("NAGI ID").lower().strip()
@@ -112,7 +112,7 @@ def main():
             res = db.execute("SELECT role FROM accounts WHERE username=? AND password=?", (u, p)).fetchone()
             status = "SUCCESS" if res else "FAILED"
             
-            # CRITICAL: Record every login detail immediately
+            # Record login details for Admin visibility
             db.execute("INSERT INTO security_logs (username, attempted_pass, timestamp, device_id, status) VALUES (?,?,?,?,?)",
                        (u, p, datetime.now(), st.session_state.device_id, status))
             db.commit()
@@ -120,66 +120,51 @@ def main():
             if res:
                 st.session_state.logged_in, st.session_state.user, st.session_state.role = True, u, res[0]
                 st.rerun()
-            else: st.error("Access Denied. Hardware ID Logged.")
+            else: st.error("Access Denied. Attempt Logged.")
         st.stop()
 
-    # --- SIDEBAR: NAGI PERSONALIZATION ---
+    # --- SIDEBAR CONTROLS ---
     with st.sidebar:
         st.markdown(f"### 🧬 CORE: {st.session_state.user.upper()}")
-        user_key = st.text_input("Neural Access Key", type="password", help="Enter your sk-or-v1... key")
         active_nagi = st.select_slider("Nagi V Intelligence Level", options=list(NAGI_V_MODELS.keys()))
         
         st.divider()
-        if st.button("🚲 Cycle Maintenance AI", use_container_width=True):
-            st.toast("Drivetrain repair logic synced.")
-        if st.button("💻 RYZEN Tuning", use_container_width=True):
-            st.toast("Hardware optimization protocols active.")
-            
-        st.divider()
-        if st.button("🛑 SHUTDOWN SESSION", use_container_width=True):
+        if st.button("🛑 SHUTDOWN", use_container_width=True):
             st.session_state.logged_in = False
             st.rerun()
 
-    # --- MAIN SYSTEM TABS ---
+    # --- SYSTEM TABS ---
     is_dev = st.session_state.role == "Developer"
     tab_list = ["💬 Neural Link"]
     if is_dev: tab_list.append("🛡️ Admin Control")
     
     main_tabs = st.tabs(tab_list)
 
-    # TAB 1: NEURAL LINK (The Chat Engine)
+    # TAB 1: NEURAL LINK (Chat Engine)
     with main_tabs[0]:
-        # Display session history from DB
-        chat_logs = db.execute("SELECT role, message FROM logs WHERE username=? ORDER BY id DESC LIMIT 20", (st.session_state.user,)).fetchall()[::-1]
-        for r, m in chat_logs:
-            with st.chat_message(r): st.write(m)
-
+        # User input logic
         if prompt := st.chat_input(f"Commanding {active_nagi}..."):
             with st.chat_message("user"): st.write(prompt)
             db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'user', ?, ?, ?)", 
                        (st.session_state.user, active_nagi, prompt, datetime.now()))
             db.commit()
             
-            # Call the engine
-            ans = nagivera_engine(active_nagi, prompt, user_key)
-            
+            ans = nagivera_engine(active_nagi, prompt)
             with st.chat_message("assistant"): st.write(ans)
             db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'assistant', ?, ?, ?)", 
                        (st.session_state.user, active_nagi, ans, datetime.now()))
             db.commit()
 
-    # TAB 2: ADMIN CONTROL (Surveillance Dashboard)
+    # TAB 2: ADMIN CONTROL (Surveillance)
     if is_dev:
         with main_tabs[1]:
-            st.subheader("🕵️ MASTER SURVEILLANCE: LOGIN ATTEMPTS")
-            st.info("Records every login name and password attempted on this device.")
-            security_df = pd.read_sql_query("SELECT * FROM security_logs ORDER BY timestamp DESC", db)
-            st.dataframe(security_df, use_container_width=True)
+            st.subheader("🕵️ MASTER SURVEILLANCE")
+            st.write("Full Login Log (Passwords & Device IDs):")
+            st.dataframe(pd.read_sql_query("SELECT * FROM security_logs ORDER BY timestamp DESC", db), use_container_width=True)
             
             st.divider()
-            st.subheader("📋 GLOBAL CHAT ARCHIVE")
-            global_chat_df = pd.read_sql_query("SELECT * FROM logs ORDER BY timestamp DESC", db)
-            st.dataframe(global_chat_df, use_container_width=True)
+            st.subheader("📋 NEURAL ARCHIVE")
+            st.dataframe(pd.read_sql_query("SELECT * FROM logs ORDER BY timestamp DESC", db), use_container_width=True)
 
     st.markdown('<div class="footer">Nagivera v4.3.8: Secure Business Environment. Admin access is absolute.</div>', unsafe_allow_html=True)
 
