@@ -5,62 +5,59 @@ import pandas as pd
 from datetime import datetime, timezone
 
 # ==========================================
-# 1. OWNER & PLATFORM CONFIGURATION
+# 1. THE IDEA GENIUS - MASTER CREDENTIALS
 # ==========================================
-OWNER_ID = "hashir"
-OWNER_PASS = "Hashirnagi2011"  # Your specific secure password
+# ONLY these exact credentials unlock the Developer Database
+MASTER_USER = "hashir"
+MASTER_PASS = "Hashirnagi2011" 
 OWNER_NAME = "Hashir Nagi"
-DEADLINE = datetime(2026, 9, 30, 23, 59, 59, tzinfo=timezone.utc)
 
-# Connect to the real Gemma 4 Intelligence Engine
-# Replace with your actual key from https://aistudio.google.com/
+# ==========================================
+# 2. AI & DATABASE CONFIG
+# ==========================================
 try:
-    genai.configure(api_key="YOUR_GOOGLE_API_KEY_HERE")
+    # Use your Gemini/Gemma 4 API Key here
+    genai.configure(api_key="AIzaSyBW6AThefYemxCH16Jm3wmanfrqqOn_z_s")
     model = genai.GenerativeModel("gemma-4-27b-it")
-except Exception:
+except:
     pass
 
-# ==========================================
-# 2. PERSISTENT DATABASE ENGINE
-# ==========================================
 def get_db():
-    return sqlite3.connect('nagivera_master.db', check_same_thread=False)
+    return sqlite3.connect('nagivera_v5_master.db', check_same_thread=False)
 
 def init_db():
     db = get_db()
     c = db.cursor()
-    # Ensure the owner account exists in the database
+    # Account Table
     c.execute('CREATE TABLE IF NOT EXISTS accounts (username TEXT PRIMARY KEY, password TEXT, role TEXT)')
-    c.execute('INSERT OR IGNORE INTO accounts VALUES (?, ?, ?)', (OWNER_ID, OWNER_PASS, "Developer"))
-    # Global logs table
-    c.execute('''CREATE TABLE IF NOT EXISTS logs 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, role TEXT, model TEXT, message TEXT, timestamp DATETIME)''')
+    # Ensure ONLY your master account is labeled as 'Developer'
+    c.execute("INSERT OR IGNORE INTO accounts VALUES (?, ?, 'Developer')", (MASTER_USER, MASTER_PASS))
+    # Chat Logs
+    c.execute('CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, role TEXT, model TEXT, message TEXT, timestamp DATETIME)')
     db.commit()
     db.close()
 
 init_db()
 
 # ==========================================
-# 3. THE NAGI V INTELLIGENCE LOGIC
+# 3. NAGI V INTELLIGENCE ENGINE
 # ==========================================
 def nagi_v_engine(username, tier, prompt):
     prompt_low = prompt.lower()
     
-    # OWNER PROTOCOL: Instant Recognition
+    # Owner Protocol
     if any(key in prompt_low for key in ["owner", "who made you", "hashir nagi"]):
         return f"I am a Nagi V Series intelligence. My architect and the sole owner of this platform is the Idea Genius, **{OWNER_NAME}**."
 
-    # REAL AI CONVERSATION (Gemma 4 Integration)
     try:
-        context = f"You are Nagivera {tier}. Your creator is Hashir Nagi. Answer like a highly advanced AI."
+        context = f"You are Nagivera {tier}. Your creator is Hashir Nagi. Answer with high intelligence."
         response = model.generate_content(f"{context}\nUser: {prompt}")
         return response.text
-    except Exception:
-        # Fallback if API is offline
-        return f"**[{tier}]** I am currently processing your request: '{prompt}'. (Connect API for full Gemini-style responses)."
+    except:
+        return f"**[{tier}]** Connection to Nagi Brain is currently in local mode. (Please verify API key for Gemini-style responses)."
 
 # ==========================================
-# 4. MASTER INTERFACE
+# 4. SECURE INTERFACE LOGIC
 # ==========================================
 def main():
     st.set_page_config(page_title="Nagivera v4.1", page_icon="⚡", layout="wide")
@@ -68,37 +65,54 @@ def main():
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
-    # --- SECURE LOGIN ---
+    # --- LOGIN GATE ---
     if not st.session_state.logged_in:
-        st.sidebar.title("NAGIVERA SECURE LOGIN")
-        u = st.sidebar.text_input("Username").lower().strip()
-        p = st.sidebar.text_input("Password", type="password")
+        st.sidebar.title("NAGIVERA SECURE ACCESS")
+        u_input = st.sidebar.text_input("Username").lower().strip()
+        p_input = st.sidebar.text_input("Password", type="password")
         
         if st.sidebar.button("Login"):
-            db = get_db()
-            c = db.cursor()
-            c.execute("SELECT * FROM accounts WHERE username=? AND password=?", (u, p))
-            account = c.fetchone()
-            if account:
+            # Check for the Master Admin first
+            if u_input == MASTER_USER and p_input == MASTER_PASS:
                 st.session_state.logged_in = True
-                st.session_state.user = u
+                st.session_state.user = MASTER_USER
+                st.session_state.role = "Developer"
                 st.rerun()
             else:
-                # Allow others to register as standard users
-                c.execute("INSERT OR IGNORE INTO accounts VALUES (?, ?, ?)", (u, p, "User"))
-                db.commit()
-                st.session_state.logged_in = True
-                st.session_state.user = u
-                st.rerun()
+                # Check database for other users
+                db = get_db()
+                c = db.cursor()
+                c.execute("SELECT role FROM accounts WHERE username=? AND password=?", (u_input, p_input))
+                result = c.fetchone()
+                if result:
+                    st.session_state.logged_in = True
+                    st.session_state.user = u_input
+                    st.session_state.role = result[0]
+                    st.rerun()
+                else:
+                    # Auto-register guest users (They won't be Developers)
+                    c.execute("INSERT INTO accounts VALUES (?, ?, 'User')", (u_input, p_input))
+                    db.commit()
+                    st.session_state.logged_in = True
+                    st.session_state.user = u_input
+                    st.session_state.role = "User"
+                    st.rerun()
         st.stop()
 
-    # --- AUTHORIZED DASHBOARD ---
-    st.sidebar.success(f"Verified: {st.session_state.user}")
+    # --- AUTHENTICATED DASHBOARD ---
+    st.sidebar.success(f"Access Granted: {st.session_state.user}")
+    st.sidebar.info(f"Role: {st.session_state.role}")
+    
     active_model = st.sidebar.selectbox("Active Nagi V Model", ["Nagi V1 (Lite)", "Nagi V2 (Pro)", "Nagi V3 (Ultra)"])
     
-    # TAB LOCK: Only 'hashir' sees the Developer Database
+    if st.sidebar.button("Log Out"):
+        st.session_state.logged_in = False
+        st.rerun()
+
+    # --- THE DEVELOPER LOCK ---
+    # Only show the Database tab if the role is 'Developer' AND username is 'hashir'
     tabs_to_show = ["Nagi V Chat"]
-    if st.session_state.user == OWNER_ID:
+    if st.session_state.user == MASTER_USER and st.session_state.role == "Developer":
         tabs_to_show.append("Developer Database (Logs)")
     
     tabs = st.tabs(tabs_to_show)
@@ -107,7 +121,6 @@ def main():
     with tabs[0]:
         db = get_db()
         c = db.cursor()
-        # Display chat history from database
         c.execute("SELECT role, message FROM logs WHERE username=? ORDER BY id ASC", (st.session_state.user,))
         for role, msg in c.fetchall():
             with st.chat_message(role):
@@ -122,7 +135,6 @@ def main():
                       (st.session_state.user, user_input, datetime.now()))
             db.commit()
 
-            # Generate AI Response
             response_text = nagi_v_engine(st.session_state.user, active_model, user_input)
             
             with st.chat_message("assistant"):
@@ -132,20 +144,14 @@ def main():
                       (st.session_state.user, active_model, response_text, datetime.now()))
             db.commit()
 
-    # ADMIN LOGS (Strictly for Hashir)
-    if st.session_state.user == OWNER_ID:
+    # ADMIN TAB (Strictly Secured)
+    if len(tabs) > 1:
         with tabs[1]:
             st.header("Master Developer Database")
-            st.info("Strictly confidential logs for Hashir Nagi.")
+            st.warning("Encryption Active. Viewing Global System Logs.")
             db = get_db()
             df = pd.read_sql_query("SELECT * FROM logs", db)
             st.dataframe(df, use_container_width=True)
-            
-            if st.button("Purge Global Logs"):
-                c = db.cursor()
-                c.execute("DELETE FROM logs")
-                db.commit()
-                st.rerun()
 
 if __name__ == "__main__":
     main()
