@@ -99,15 +99,14 @@ def main():
                     st.rerun()
         st.stop()
 
-    # --- AUTHENTICATED DASHBOARD ---
+   # --- AUTHORIZED DASHBOARD ---
     st.sidebar.success(f"Access Granted: {st.session_state.user}")
-    st.sidebar.info(f"Role: {st.session_state.role}")
     
-    active_model = st.sidebar.selectbox("Active Nagi V Model", ["Nagi V1 (Lite)", "Nagi V2 (Pro)", "Nagi V3 (Ultra)"])
-    
-    if st.sidebar.button("Log Out"):
-        st.session_state.logged_in = False
-        st.rerun()
+    # SAFETY CHECK: Only show role if it exists in session_state
+    if 'role' in st.session_state:
+        st.sidebar.info(f"Role: {st.session_state.role}")
+    else:
+        st.sidebar.info("Role: Pending...")
 
     # --- THE DEVELOPER LOCK ---
     # Only show the Database tab if the role is 'Developer' AND username is 'hashir'
