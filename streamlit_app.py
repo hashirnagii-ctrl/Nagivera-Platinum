@@ -16,7 +16,6 @@ MASTER_PASS = "Hashirnagi2011"
 API_SECRET = "AIzaSyDxtxyI0s2L7gpyTyz2blQCOmEBv0Is18o"
 genai.configure(api_key=API_SECRET)
 
-# THE 2026 NAGI 2.5 STACK
 NAGI_VERSIONS = {
     "Nagi 2.5 (Lite)": "gemini-2.5-flash-lite", 
     "Nagi 2.5 (Flash)": "gemini-2.5-flash",     
@@ -28,18 +27,19 @@ NAGI_VERSIONS = {
 # ==========================================
 def get_image_base64(image_path):
     if os.path.exists(image_path):
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
+        try:
+            with open(image_path, "rb") as img_file:
+                return base64.b64encode(img_file.read()).decode()
+        except: return None
     return None
 
 nagi_img_b64 = get_image_base64("navigera.png")
 
 # ==========================================
-# 3. DATABASE PROTOCOL (Updated for Stats)
+# 3. DATABASE PROTOCOL
 # ==========================================
 def get_db():
     conn = sqlite3.connect('nagi_v_final.db', check_same_thread=False)
-    # Added 'msg_count' to accounts to persist statistics
     conn.execute('''CREATE TABLE IF NOT EXISTS accounts 
                  (username TEXT PRIMARY KEY, password TEXT, role TEXT, msg_count INTEGER DEFAULT 0)''')
     conn.execute('''CREATE TABLE IF NOT EXISTS logs 
@@ -74,6 +74,12 @@ def nagi_v_engine(nagi_label, prompt):
 def main():
     st.set_page_config(page_title="Nagi V", page_icon="💎", layout="wide")
 
+    # INITIALIZE SESSION STATES (Prevents the AttributeError from your image)
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    if 'total_msgs' not in st.session_state:
+        st.session_state.total_msgs = 0
+
     bg_style = f"background-image: url('data:image/png;base64,{nagi_img_b64}');" if nagi_img_b64 else "background-color: #000;"
     
     st.markdown(f"""
@@ -99,10 +105,7 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
-
-    # --- LOGIN ---
+    # --- LOGIN LOGIC ---
     if not st.session_state.logged_in:
         st.title("NAGI V: ACCESS")
         u = st.text_input("Nagi ID").lower().strip()
@@ -115,7 +118,7 @@ def main():
                 st.session_state.logged_in = True
                 st.session_state.user = u
                 st.session_state.role = res[0]
-                st.session_state.total_msgs = res[1]
+                st.session_state.total_msgs = res[1] # Set stats here
                 st.rerun()
             else: st.error("Access Denied.")
         st.stop()
@@ -127,20 +130,20 @@ def main():
     with st.sidebar:
         st.markdown(f"### 🛠 {st.session_state.user.upper()} CONTROL")
         
-        # PERSISTENT STATISTICS
+        # PERSISTENT STATISTICS (Fixed Safety Check)
+        msgs = st.session_state.get('total_msgs', 0)
         st.markdown(f"""
         <div class="stat-card">
             <small>LIFETIME COMMANDS</small><br>
-            <strong>{st.session_state.total_msgs}</strong>
+            <strong>{msgs}</strong>
         </div>
         """, unsafe_allow_html=True)
         
         st.divider()
         active_version = st.select_slider("Intelligence Level", options=list(NAGI_VERSIONS.keys()))
         
-        # PERSONALIZATION ADDITIONS
         st.divider()
-        st.markdown("### 🧬 NAGI PERSONALIZATION")
+        st.markdown("### 🧬 PERSONALIZATION")
         if st.button("🚲 Cycle Maintenance AI", use_container_width=True):
             st.toast("Drivetrain repair guides loaded.")
         if st.button("💻 RYZEN Optimization", use_container_width=True):
@@ -154,9 +157,12 @@ def main():
             st.session_state.logged_in = False
             st.rerun()
 
-    # --- MAIN TABS ---
+    # --- MAIN NAVIGATION ---
     is_dev = st.session_state.role == "Developer"
-    main_tabs = st.tabs(["Neural Link", "Nagi Business", "Admin Control"]) if is_dev else st.tabs(["Neural Link", "Nagi Business"])
+    tabs = ["Neural Link", "Nagi Business", "Nagi Vision (AI Media)"]
+    if is_dev: tabs.append("Admin Control")
+    
+    main_tabs = st.tabs(tabs)
 
     # --- TAB 1: NEURAL LINK (CHAT) ---
     with main_tabs[0]:
@@ -171,7 +177,6 @@ def main():
                        (st.session_state.user, active_version, prompt, datetime.now()))
             db.commit()
             
-            # Update Stats
             update_user_stats(st.session_state.user)
             st.session_state.total_msgs += 1
             
@@ -183,29 +188,25 @@ def main():
             db.close()
             st.rerun()
 
-    # --- TAB 2: BUSINESS ACCOUNT PAGE ---
+    # --- TAB 2: BUSINESS ---
     with main_tabs[1]:
         st.header("💼 Nagi Business Solutions")
-        st.info("Centralized business management for your Nagi Intelligence deployment.")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Active Subscriptions", "1 Tier (Master)")
-            st.write("**Organization Name:** Nagivera v4.3")
-            st.write("**Primary Hardware:** AMD Ryzen Architecture")
-        with col2:
-            st.metric("API Uptime", "99.9% (Stable)")
-            st.write("**Founder:** Hashir Nagi")
-            st.write("**Region:** Rawalpindi / Global")
-        
-        st.divider()
-        st.subheader("Enterprise Resource Planning")
-        st.button("Generate Performance Invoice")
-        st.button("Export Usage Analytics")
+        st.write("**Organization Name:** Nagivera v4.3")
+        st.write("**Primary Hardware:** AMD Ryzen Architecture")
+        st.write("**Region:** Rawalpindi / Global")
 
-    # --- TAB 3: ADMIN CONTROL (Developer Only) ---
+    # --- TAB 3: NAGI VISION (CONCEPT) ---
+    with main_tabs[2]:
+        st.header("🎨 Nagi Vision Forge")
+        st.info("Generative Video and Image suites are being calibrated for your Nagivera ecosystem.")
+        st.subheader("Upcoming Engines:")
+        st.write("* **Nagi Lens:** Nano Banana 2 (Image Generation)")
+        st.write("* **Nagi Motion:** Veo (Video Generation)")
+        st.write("* **Nagi Sonic:** Lyria 3 (Audio/Music Generation)")
+
+    # --- TAB 4: ADMIN ---
     if is_dev:
-        with main_tabs[2]:
-            st.subheader("Global Identity Directory")
+        with main_tabs[3]:
             db = get_db()
             st.dataframe(pd.read_sql_query("SELECT username, role, msg_count FROM accounts", db), use_container_width=True)
             db.close()
