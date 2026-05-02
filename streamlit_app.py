@@ -15,6 +15,7 @@ MASTER_PASS = "Hashirnagi2011"
 
 # HARDCODED NEURAL ACCESS KEY
 # Note: Ensure this key is active in your OpenRouter dashboard
+# Replace the old key with your fresh one here
 NAGIVERA_KEY = "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"
 
 # Verified Compatible Models for Nagi V Protocols
