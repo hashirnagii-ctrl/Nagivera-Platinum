@@ -11,16 +11,16 @@ MASTER_USER = "hashir"
 MASTER_PASS = "Hashirnagi2011" 
 OWNER_NAME = "Hashir Nagi"
 
-# Use your new API Key from Google AI Studio
+# Secure API Configuration
 GOOGLE_API_KEY = "AIzaSyBW6AThefYemxCH16Jm3wmanfrqqOn_z_s"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # UPDATED: Gemma 4 Model Identifiers (Stable Release 2026)
 MODEL_MAP = {
-    "Nagi V1 (Flash)": "gemini-3.1-flash-lite-preview",  # Ultra-fast, high volume
-    "Nagi V2 (Speed)": "gemini-3-flash-preview",       # Pro-level intelligence
-    "Nagi V3 (MoE)": "models/gemma-4-26b-a4b-it",      # Stable open-weights
-    "Nagi V4 (Pro)": "gemini-3.1-pro-preview"          # Advanced thinking & logic
+    "Nagi V1 (Flash)": "gemini-3.1-flash-lite-preview",  # Ultra-fast
+    "Nagi V2 (Speed)": "gemini-3-flash-preview",       # Balanced
+    "Nagi V3 (MoE)": "models/gemma-4-26b-a4b-it",      # Stable MoE
+    "Nagi V4 (Pro)": "gemini-3.1-pro-preview"          # Advanced Logic
 }
 
 # ==========================================
@@ -42,23 +42,18 @@ def init_db():
 init_db()
 
 # ==========================================
-# 3. NAGI V INTELLIGENCE ENGINE (Gemma 4 Optimized)
+# 3. NAGI V INTELLIGENCE ENGINE
 # ==========================================
 def nagi_v_engine(username, tier, prompt):
     prompt_low = prompt.lower()
     
-    # OWNER PROTOCOL
     if any(key in prompt_low for key in ["owner", "who made you", "hashir nagi"]):
         return f"I am a Nagi V Series intelligence. My architect and the sole owner of this platform is the Idea Genius, **{OWNER_NAME}**."
 
     try:
-        model_id = MODEL_MAP.get(tier, "gemma-4-e4b-it")
+        model_id = MODEL_MAP.get(tier, "gemini-3.1-flash-lite-preview")
         nagi_model = genai.GenerativeModel(model_id)
-        
-        # New Feature: Gemma 4 Thinking Mode (Available via API)
-        # We can simulate advanced system instructions here
         context = f"You are Nagivera {tier}, a frontier intelligence powered by Gemma 4. Creator: Hashir Nagi."
-        
         response = nagi_model.generate_content(f"{context}\nUser: {prompt}")
         return response.text
     except Exception as e:
@@ -74,7 +69,6 @@ def main():
         st.session_state.logged_in = False
 
     if not st.session_state.logged_in:
-        # --- LOGIN / REGISTRATION SIDEBAR ---
         st.sidebar.title("NAGIVERA AUTH")
         mode = st.sidebar.radio("Platform Mode", ["Login", "Register"])
         u_input = st.sidebar.text_input("User ID").lower().strip()
@@ -90,6 +84,9 @@ def main():
                 if res:
                     st.session_state.logged_in, st.session_state.user, st.session_state.role = True, u_input, res[0]
                     st.rerun()
+                else:
+                    st.sidebar.error("Invalid Credentials.")
+        
         elif mode == "Register" and st.sidebar.button("Sign Up"):
             try:
                 db = get_db()
@@ -99,7 +96,7 @@ def main():
             except: st.sidebar.error("ID Unavailable.")
         st.stop()
 
-    # --- MAIN INTERFACE ---
+    # --- LOGGED IN UI ---
     st.sidebar.success(f"Arch: {st.session_state.user} ({st.session_state.role})")
     active_model = st.sidebar.selectbox("Gemma 4 Engine Tier", list(MODEL_MAP.keys()))
     
@@ -107,16 +104,18 @@ def main():
         st.session_state.logged_in = False
         st.rerun()
 
-    tab1, tab2 = st.tabs(["Nagi V Neural Link", "Admin Control"] if st.session_state.role == "Developer" else ["Neural Link", "History"])
+    # Fixing the "Empty" Admin/History tab issue
+    tab_list = ["Nagi V Neural Link", "Admin Control"] if st.session_state.role == "Developer" else ["Neural Link", "History"]
+    tabs = st.tabs(tab_list)
 
-    with tab1:
+    # TAB 1: CHAT INTERFACE
+    with tabs[0]:
         db = get_db()
         logs = db.execute("SELECT role, message FROM logs WHERE username=? ORDER BY id ASC", (st.session_state.user,)).fetchall()
         for r, m in logs:
             with st.chat_message(r): st.write(m)
 
-        user_prompt = st.chat_input("Command the Gemma 4 neural network...")
-        if user_prompt:
+        if user_prompt := st.chat_input("Command the Gemma 4 neural network..."):
             with st.chat_message("user"): st.write(user_prompt)
             db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'user', 'Input', ?, ?)", (st.session_state.user, user_prompt, datetime.now()))
             db.commit()
@@ -127,6 +126,30 @@ def main():
             with st.chat_message("assistant"): st.write(resp)
             db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'assistant', ?, ?, ?)", (st.session_state.user, active_model, resp, datetime.now()))
             db.commit()
+            st.rerun()
+
+    # TAB 2: ADMIN OR HISTORY
+    with tabs[1]:
+        db = get_db()
+        if st.session_state.role == "Developer":
+            st.header("Admin Control Center")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Total Users", db.execute("SELECT COUNT(*) FROM accounts").fetchone()[0])
+                if st.button("Clear Global Logs"):
+                    db.execute("DELETE FROM logs")
+                    db.commit()
+                    st.success("Global logs purged.")
+            with col2:
+                st.metric("Total Queries", db.execute("SELECT COUNT(*) FROM logs").fetchone()[0])
+                st.write("Active Model Map Loaded.")
+        else:
+            st.header("Your Neural History")
+            my_logs = db.execute("SELECT timestamp, model, message FROM logs WHERE username=? AND role='assistant' ORDER BY id DESC", (st.session_state.user,)).fetchall()
+            if my_logs:
+                st.table(pd.DataFrame(my_logs, columns=["Time", "Model", "Response Summary"]))
+            else:
+                st.info("No neural history found.")
 
 if __name__ == "__main__":
     main()
