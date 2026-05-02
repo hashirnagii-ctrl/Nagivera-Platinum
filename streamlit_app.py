@@ -11,49 +11,51 @@ MASTER_USER = "hashir"
 MASTER_PASS = "Hashirnagi2011" 
 OWNER_NAME = "Hashir Nagi"
 
-# RE-VERIFY THIS KEY in your Google AI Studio
+# Your Google API Key
 GOOGLE_API_KEY = "AIzaSyBolwEZUN8GO_n1dfKw-B_Q0VFQipfxsmc"
 genai.configure(api_key=GOOGLE_API_KEY)
 
+# THE FIX: Removed the "models/" prefix that caused the 404 error.
+# Using the stable, exact model names for Speed and Deep Reasoning.
 MODEL_MAP = {
-    "NAGI V (Flash)": "models/gemini-1.5-flash",
-    "NAGI V (Gemma 4 Core)": "models/gemma-4-26b-a4b-it",
-    "NAGI V (Pro)": "models/gemini-1.5-pro"
+    "NAGI V (Hyper-Speed)": "gemini-1.5-flash",    # Blazing fast, great for high volume
+    "NAGI V (Deep Expert)": "gemini-1.5-pro",      # Slower, but provides expert-level reasoning
 }
 
 # ==========================================
-# 2. CORE UTILITIES
+# 2. CORE UTILITIES & PERSISTENCE
 # ==========================================
 def get_db():
     return sqlite3.connect('nagivera_platinum_master.db', check_same_thread=False)
 
 @st.cache_resource
 def get_model(model_id):
+    # Caching prevents reloading the model every time, ensuring max speed
     return genai.GenerativeModel(model_id)
 
 def nagi_v_engine(tier, prompt):
-    model_id = MODEL_MAP.get(tier, "models/gemini-1.5-flash")
+    model_id = MODEL_MAP.get(tier, "gemini-1.5-flash")
     try:
         model = get_model(model_id)
-        # Simplified directive to reduce 'Token Overhead' which causes slowness
-        response = model.generate_content(f"You are {tier} by {OWNER_NAME}. User: {prompt}")
+        # Direct, lightweight system instruction to prevent lag
+        directive = f"You are {tier}, an expert AI system named NAGI V. Created by {OWNER_NAME}."
+        response = model.generate_content(f"{directive}\n\nUser: {prompt}")
         return response.text
     except Exception as e:
-        # TRAP THE REAL ERROR: This will help us see WHY it is failing
-        return f"NAGI V DEBUG ERROR: {str(e)}"
+        return f"NAGI V SYSTEM ERROR: {str(e)}"
 
 # ==========================================
-# 3. INTERFACE & PERSISTENCE
+# 3. INTERFACE (NAGI V TERMINAL)
 # ==========================================
 def main():
-    st.set_page_config(page_title="NAGI Platinum", layout="wide")
+    st.set_page_config(page_title="NAGI Platinum Core", layout="wide")
 
-    # SESSION PERSISTENCE (Refresh Lock)
+    # Keep user logged in during refreshes
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
     if not st.session_state.logged_in:
-        st.title("💎 NAGI PLATINUM ACCESS")
+        st.title("💎 NAGI V SECURE ACCESS")
         u_log = st.text_input("NAGI ID", key="l_u").lower().strip()
         p_log = st.text_input("NAGI Passkey", type="password", key="l_p")
         
@@ -66,21 +68,25 @@ def main():
                 st.rerun()
         st.stop()
 
-    # SIDEBAR CONTROLS
+    # SIDEBAR
     with st.sidebar:
-        st.title("NAGI V Core")
-        if st.button("🔄 EMERGENCY RESET"):
-            st.cache_resource.clear() # Clears the "stuck" model memory
+        st.title("NAGI V Terminal")
+        if st.button("🔄 HARD RESET", help="Clears system cache if AI hangs"):
+            st.cache_resource.clear()
             st.rerun()
-        active_tier = st.selectbox("Engine Tier", list(MODEL_MAP.keys()))
+            
+        st.divider()
+        # User selects between Hyper-Speed or Deep Expert
+        active_tier = st.selectbox("Select NAGI V Core", list(MODEL_MAP.keys()))
+        
         if st.button("Terminate Link"):
             st.session_state.logged_in = False
             st.rerun()
 
     # CHAT INTERFACE
     db = get_db()
-    # Loading only 10 messages for max speed
-    chat_data = db.execute("SELECT role, message FROM logs WHERE username=? ORDER BY id DESC LIMIT 10", (st.session_state.user,)).fetchall()[::-1]
+    # Limit to 15 messages so the UI doesn't get slow over time
+    chat_data = db.execute("SELECT role, message FROM logs WHERE username=? ORDER BY id DESC LIMIT 15", (st.session_state.user,)).fetchall()[::-1]
     
     for r, m in chat_data:
         with st.chat_message(r): st.write(m)
@@ -88,13 +94,16 @@ def main():
     if user_prompt := st.chat_input("Command NAGI V..."):
         with st.chat_message("user"): st.write(user_prompt)
         
+        # Log user message
         db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'user', ?, ?, ?)", 
                    (st.session_state.user, active_tier, user_prompt, datetime.now()))
         
-        # Call Engine
+        # Generate NAGI V Response
         resp = nagi_v_engine(active_tier, user_prompt)
         
         with st.chat_message("assistant"): st.write(resp)
+        
+        # Log assistant message
         db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'assistant', ?, ?, ?)", 
                    (st.session_state.user, active_tier, resp, datetime.now()))
         db.commit()
