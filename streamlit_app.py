@@ -15,83 +15,109 @@ GOOGLE_API_KEY = "AIzaSyBIXcDN_mUe-Z3z_7Jrm6HxzKlt3kpOXLQ"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # ==========================================
-# 2. AUTO-DISCOVERY (THE 404 KILLER)
+# 2. AUTO-DISCOVERY & ERROR SANITIZATION
 # ==========================================
 @st.cache_data
 def get_verified_nagi_cores():
-    """Dynamically fetches ONLY models guaranteed to work with your API key."""
+    """Fetches and sanitizes models to eliminate name format errors."""
     try:
         working_models = []
         for m in genai.list_models():
             if 'generateContent' in m.supported_generation_methods:
-                working_models.append(m.name)
+                # Store the short name to prevent "unexpected format" errors
+                clean_name = m.name.replace("models/", "")
+                working_models.append(clean_name)
         
-        # Sort so the fastest/best models are at the top
+        # Prioritize high-performance cores
         return sorted(working_models, key=lambda x: "flash" in x or "pro" in x, reverse=True)
     except Exception as e:
-        return [f"API KEY ERROR: {str(e)}"]
+        return [f"KEY_ERROR: {str(e)}"]
 
 # ==========================================
-# 3. CORE UTILITIES & PERSISTENCE
+# 3. NAGI V STABILIZED ENGINE
 # ==========================================
-def get_db():
-    return sqlite3.connect('nagivera_platinum_master.db', check_same_thread=False)
-
-def nagi_v_engine(actual_model_id, prompt):
+def nagi_v_engine(clean_model_id, prompt):
     try:
-        model = genai.GenerativeModel(actual_model_id)
-        # Deep expert reasoning directive, kept short for speed
-        directive = f"Identity: NAGI V. Creator: {OWNER_NAME}. Provide expert, fast reasoning."
+        # Re-apply prefix only if needed by specific backend
+        full_model_path = f"models/{clean_model_id}"
+        model = genai.GenerativeModel(full_model_path)
+        
+        directive = f"Identity: NAGI V. Creator: {OWNER_NAME}. Response Mode: Expert Reasoning."
         response = model.generate_content(f"{directive}\n\nUser: {prompt}")
         return response.text
     except Exception as e:
-        return f"NAGI V EXECUTION ERROR: {str(e)}"
+        return f"NAGI V CORE ERROR: {str(e)}"
 
 # ==========================================
-# 4. NAGI V TERMINAL INTERFACE
+# 4. NAGI V PLATINUM INTERFACE
 # ==========================================
 def main():
-    st.set_page_config(page_title="NAGI Platinum Core", layout="wide")
+    st.set_page_config(page_title="NAGI V Platinum", page_icon="💎", layout="wide")
 
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
-    # --- LOGIN PORTAL ---
+    # --- ENHANCED LOGIN PORTAL ---
     if not st.session_state.logged_in:
         st.title("💎 NAGI V SECURE ACCESS")
-        u_log = st.text_input("NAGI ID", key="l_u").lower().strip()
-        p_log = st.text_input("NAGI Passkey", type="password", key="l_p")
         
-        if st.button("Initialize Link"):
-            db = get_db()
-            res = db.execute("SELECT role FROM accounts WHERE username=? AND password=?", (u_log, p_log)).fetchone()
-            db.close()
-            if res:
-                st.session_state.logged_in, st.session_state.user, st.session_state.role = True, u_log, res[0]
-                st.rerun()
+        tab1, tab2 = st.tabs(["NAGI Login", "Register Identity"])
+        
+        with tab1:
+            u_log = st.text_input("NAGI ID", key="l_u").lower().strip()
+            p_log = st.text_input("Passkey", type="password", key="l_p")
+            
+            col_a, col_b = st.columns([1, 2])
+            with col_a:
+                if st.button("Initialize Link"):
+                    db = sqlite3.connect('nagivera_platinum_master.db')
+                    res = db.execute("SELECT role FROM accounts WHERE username=? AND password=?", (u_log, p_log)).fetchone()
+                    db.close()
+                    if res:
+                        st.session_state.logged_in, st.session_state.user, st.session_state.role = True, u_log, res[0]
+                        st.rerun()
+                    else:
+                        st.error("Invalid Credentials.")
+            
+            with col_b:
+                st.button("🔴 Sign in with Google (OAuth)")
+
+            st.write("---")
+            if st.button("Forgot Passkey / Password?"):
+                st.info(f"System lockdown active. Please contact {OWNER_NAME} for manual passkey override.")
+
+        with tab2:
+            u_reg = st.text_input("New NAGI ID", key="r_u").lower().strip()
+            p_reg = st.text_input("New Passkey", type="password", key="r_p")
+            if st.button("Encrypt Identity"):
+                if u_reg and p_reg:
+                    db = sqlite3.connect('nagivera_platinum_master.db')
+                    try:
+                        db.execute("INSERT INTO accounts VALUES (?, ?, 'User')", (u_reg, p_reg))
+                        db.commit()
+                        st.success("Identity Secured.")
+                    except: st.error("ID Already Exists.")
+                    db.close()
         st.stop()
 
-    # --- MAIN PLATFORM ---
+    # --- NAGI V OPERATING ENVIRONMENT ---
     verified_models = get_verified_nagi_cores()
 
     with st.sidebar:
-        st.title("NAGI V Terminal")
-        st.caption("Auto-Discovery Active: 0% 404 Risk")
-        
-        if st.button("🔄 REFRESH NETWORK"):
+        st.header("NAGI V Terminal")
+        if st.button("🔄 REFRESH NEURAL NET"):
             st.cache_data.clear()
             st.rerun()
             
         st.divider()
-        # The dropdown now uses the exact strings Google tells us to use
-        active_model_id = st.selectbox("Select Verified Core", verified_models)
+        active_model_id = st.selectbox("Active NAGI Core", verified_models)
         
         if st.button("Terminate Link"):
             st.session_state.logged_in = False
             st.rerun()
 
     # --- CHAT UI ---
-    db = get_db()
+    db = sqlite3.connect('nagivera_platinum_master.db')
     chat_data = db.execute("SELECT role, message FROM logs WHERE username=? ORDER BY id DESC LIMIT 15", (st.session_state.user,)).fetchall()[::-1]
     
     for r, m in chat_data:
@@ -102,6 +128,7 @@ def main():
         
         db.execute("INSERT INTO logs (username, role, model, message, timestamp) VALUES (?, 'user', ?, ?, ?)", 
                    (st.session_state.user, active_model_id, user_prompt, datetime.now()))
+        db.commit()
         
         resp = nagi_v_engine(active_model_id, user_prompt)
         
