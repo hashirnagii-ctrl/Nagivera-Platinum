@@ -1,101 +1,82 @@
 import streamlit as st
-import sqlite3
-from datetime import datetime
 import requests
 import json
+from datetime import datetime
 
 # ==========================================
 # 1. CORE SYSTEM IDENTITY
 # ==========================================
-OWNER_NAME = "Hashir Nagi"
-MASTER_USER = "hashir"
-MASTER_PASS = "Hashirnagi2011" 
+# OWNER: Hashir Nagi
+# ENGINE: DeepSeek V3 (Coding Specialist)
 
-# Ensure there is a space after 'Bearer'
-headers = {
-    "Authorization": f"sk-b497aa3622e3494ea9dccf8956ac6f08",
-    "X-Title": "Nagivera Coder v5.0",
-}
-# The specific engine for elite coding
-DEEPSEEK_MODEL_ID = "deepseek/deepseek-coder"
+# SECURITY PROTOCOL: Use st.secrets in production!
+# For now, I've plugged in the key you provided.
+DEEPSEEK_API_KEY = "sk-b497aa3622e3494ea9dccf8956ac6f08"
 
-def get_db():
-    conn = sqlite3.connect('nagi_coder_final.db', check_same_thread=False)
-    conn.execute('''CREATE TABLE IF NOT EXISTS coding_logs 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, prompt TEXT, response TEXT, timestamp DATETIME)''')
-    return conn
-
-# ==========================================
-# 2. THE DEEPSEEK NEURAL ENGINE
-# ==========================================
-def deepseek_coder_engine(prompt):
-    # Specialized prompt to lock the AI into "Coding Only" mode
-    CODING_IDENTITY = (
-        "You are Nagivera Coder, an elite neural architect. "
-        "Your purpose is exclusively software engineering, debugging, and system design. "
-        "Reject any non-technical queries. Always respond with clean, production-grade code."
+def nagivera_deepseek_engine(prompt):
+    # This system prompt locks Nagivera into 'Coding Only' mode
+    system_identity = (
+        "You are Nagivera v5.1, a dedicated AI Coding Architect. "
+        "Your only purpose is to write, debug, and explain code. "
+        "If a user asks a non-coding question, politely refuse and ask for a programming task."
     )
     
+    # DeepSeek API Endpoint (Standard OpenAI-compatible format)
+    url = "https://api.deepseek.com/chat/completions"
+    
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
+    }
+    
+    payload = {
+        "model": "deepseek-coder", # Best for programming logic
+        "messages": [
+            {"role": "system", "content": system_identity},
+            {"role": "user", "content": prompt}
+        ],
+        "stream": False
+    }
+
     try:
-        response = requests.post(
-            url="https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                "X-Title": "Nagivera Coder v5.0",
-            },
-            json={
-                "model": DEEPSEEK_MODEL_ID,
-                "messages": [
-                    {"role": "system", "content": CODING_IDENTITY},
-                    {"role": "user", "content": prompt}
-                ]
-            }
-        )
-        res_json = response.json()
-        if 'choices' in res_json:
-            return res_json['choices'][0]['message']['content']
+        response = requests.post(url, headers=headers, json=payload, timeout=15)
+        if response.status_code == 200:
+            return response.json()['choices'][0]['message']['content']
+        elif response.status_code == 401:
+            return "NAGI SECURITY ERROR: API Key Invalid or unauthorized."
         else:
-            return f"NAGI ERROR: {res_json.get('error', {}).get('message', 'Neural Link Failed.')}"
-            
+            return f"NAGI SYSTEM ERROR: {response.status_code} - {response.text}"
     except Exception as e:
-        return "NAGI SYSTEM ALERT: Neural Link Interrupted. Check your internet connection."
+        return f"NAGI LINK FAILURE: {str(e)}"
 
 # ==========================================
-# 3. INTERFACE ARCHITECTURE
+# 2. INTERFACE ARCHITECTURE
 # ==========================================
 def main():
-    st.set_page_config(page_title="Nagivera Coder", page_icon="💻", layout="wide")
-    db = get_db()
+    st.set_page_config(page_title="Nagivera Coder", page_icon="⚡")
+    
+    st.title("🧬 Nagivera DeepSeek Coder")
+    st.info("System Status: Logic-Pro Engine Active | Port: 443")
 
-    # Simple Master-User Auth
-    if 'logged_in' not in st.session_state:
-        st.title("RYZEN CODER: INITIALIZE")
-        u = st.text_input("NAGI ID")
-        p = st.text_input("PASSKEY", type="password")
-        if st.button("🚀 BOOT SYSTEM"):
-            if u == MASTER_USER and p == MASTER_PASS:
-                st.session_state.logged_in = True
-                st.rerun()
-        st.stop()
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-    st.title("🧬 Nagivera Coder v5.0")
-    st.caption(f"Proprietary Engine for {OWNER_NAME} | DeepSeek-V3 Coder Active")
+    # Display Chat History
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-    # CHAT INTERFACE
-    if prompt := st.chat_input("Enter code task or debug request..."):
+    # Chat Input
+    if prompt := st.chat_input("Ask Nagivera to write or debug code..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
-            st.code(prompt, language='python') # Formats your input as code
-        
-        with st.spinner("Analyzing Logic..."):
-            ans = deepseek_coder_engine(prompt)
-        
+            st.markdown(prompt)
+
         with st.chat_message("assistant"):
-            st.markdown(ans)
-            
-        # Log to Database
-        db.execute("INSERT INTO coding_logs (prompt, response, timestamp) VALUES (?,?,?)", 
-                   (prompt, ans, datetime.now()))
-        db.commit()
+            with st.spinner("Analyzing Neural Logic..."):
+                response = nagivera_deepseek_engine(prompt)
+                st.markdown(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})
 
 if __name__ == "__main__":
     main()
