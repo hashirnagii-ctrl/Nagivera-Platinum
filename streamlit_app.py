@@ -12,7 +12,7 @@ MASTER_PASS = "Hashirnagi2011"
 OWNER_NAME = "Hashir Nagi"
 
 # Secure API Configuration
-GOOGLE_API_KEY = "AIzaSyBW6AThefYemxCH16Jm3wmanfrqqOn_z_s"
+GOOGLE_API_KEY = "AIzaSyBIXcDN_mUe-Z3z_7Jrm6HxzKlt3kpOXLQ"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # UPDATED: Gemma 4 Model Identifiers (Stable Release 2026)
