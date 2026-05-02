@@ -11,9 +11,11 @@ OWNER_NAME = "Hashir Nagi"
 MASTER_USER = "hashir"
 MASTER_PASS = "Hashirnagi2011" 
 
-# Replace this with your NEW key (after the GitHub leak reset)
-DEEPSEEK_API_KEY = "sk-b497aa3622e3494ea9dccf8956ac6f08" 
-
+# Ensure there is a space after 'Bearer'
+headers = {
+    "Authorization": f"sk-b497aa3622e3494ea9dccf8956ac6f08",
+    "X-Title": "Nagivera Coder v5.0",
+}
 # The specific engine for elite coding
 DEEPSEEK_MODEL_ID = "deepseek/deepseek-coder"
 
